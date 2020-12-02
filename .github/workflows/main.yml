@@ -7,7 +7,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: compile and release
-      uses: abhishekjog/go-release-executable@v2
+      uses: abhishekjog/go-release-executable@v3
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: compile and release
-      uses: abhishekjog/go-release-executable@v2
+      uses: abhishekjog/go-release-executable@v3
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
