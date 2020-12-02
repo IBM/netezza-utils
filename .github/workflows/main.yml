@@ -12,6 +12,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
         GOOS: linux
+        SUBDIR: "bnr-utils"
+        EXECUTABLE_NAME: "nz_azConnector"
   release-linux-amd64:
     name: release linux/amd64
     runs-on: ubuntu-latest
@@ -23,3 +25,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
         GOOS: linux
+        SUBDIR: "bnr-utils"
+        EXECUTABLE_NAME: "nz_azConnector"
