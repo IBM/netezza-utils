@@ -6,19 +6,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-      env:
-        SUBDIR: "bnr-utils"
     - name: compile and release i386
       uses: abhishekjog/go-release-executable@v4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
         GOOS: linux
-        EXECUTABLE_NAME: "nz_azConnector32"
+        SUBDIR: "bnr-utils"
+        EXECUTABLE_NAME: "nz_azConnector"
     - name: compile and release x86
       uses: abhishekjog/go-release-executable@v4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
         GOOS: linux
-        EXECUTABLE_NAME: "nz_azConnector64"
+        SUBDIR: "bnr-utils"
+        EXECUTABLE_NAME: "nz_azConnector"
