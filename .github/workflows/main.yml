@@ -6,13 +6,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SUBDIR: "bnr-utils"
     - name: compile and release i386
       uses: abhishekjog/go-release-executable@v4
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
         GOOS: linux
-        SUBDIR: "bnr-utils"
         EXECUTABLE_NAME: "nz_azConnector32"
     - name: compile and release x86
       uses: abhishekjog/go-release-executable@v4
