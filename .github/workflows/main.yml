@@ -1,29 +1,24 @@
 on: release
 name: Build Release
 jobs:
-  release-linux-386:
-    name: release linux/386
+  azure-connector:
+    name: azure blob utility
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - name: compile and release
+    - name: compile and release i386
       uses: abhishekjog/go-release-executable@v4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
         GOOS: linux
         SUBDIR: "bnr-utils"
-        EXECUTABLE_NAME: "nz_azConnector"
-  release-linux-amd64:
-    name: release linux/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: compile and release
+        EXECUTABLE_NAME: "nz_azConnector32"
+	- name: compile and release x86
       uses: abhishekjog/go-release-executable@v4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
         GOOS: linux
         SUBDIR: "bnr-utils"
-        EXECUTABLE_NAME: "nz_azConnector"
+        EXECUTABLE_NAME: "nz_azConnector64"
