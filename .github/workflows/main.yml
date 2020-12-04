@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - name: compile and release i386
+    - name: linux i386
       uses: ibm/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -14,7 +14,7 @@ jobs:
         GOOS: linux
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
-    - name: compile and release x86
+    - name: linux amd64
       uses: ibm/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -22,24 +22,27 @@ jobs:
         GOOS: linux
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
-  s3-connector:
-    name: aws s3 utility
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: compile and release i386
-      uses: ibm/go-release-executables@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: "386"
-        GOOS: linux
-        SUBDIR: "bnr-utils/nz_s3Connector"
-        EXECUTABLE_NAME: "nz_s3Connector"
-    - name: compile and release x86
+    - name: windows amd64
       uses: ibm/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
-        GOOS: linux
-        SUBDIR: "bnr-utils/nz_s3Connector"
-        EXECUTABLE_NAME: "nz_s3Connector"
+        GOOS: windows
+        SUBDIR: "bnr-utils/nz_azConnector"
+        EXECUTABLE_NAME: "nz_azConnector"
+    - name: windows 386
+      uses: ibm/go-release-executables@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GOARCH: "386"
+        GOOS: windows
+        SUBDIR: "bnr-utils/nz_azConnector"
+        EXECUTABLE_NAME: "nz_azConnector"
+    - name: darwin amd64
+      uses: ibm/go-release-executables@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GOARCH: amd64
+        GOOS: darwin
+        SUBDIR: "bnr-utils/nz_azConnector"
+        EXECUTABLE_NAME: "nz_azConnector"
