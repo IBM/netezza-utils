@@ -46,3 +46,11 @@ jobs:
         GOOS: darwin
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
+    - name: darwin 386
+      uses: ibm/go-release-executables@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GOARCH: "386"
+        GOOS: darwin
+        SUBDIR: "bnr-utils/nz_azConnector"
+        EXECUTABLE_NAME: "nz_azConnector"
