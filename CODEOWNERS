@@ -1,0 +1,32 @@
+# ========================================================================
+#
+# This is the CODEOWNERS file for netezza_utils. It determines who the
+# required code reviewers are for various components of the repo.
+#
+# If you would like to be added or removed as a code owner, please
+# submit a PR.
+#
+# For infomation on the syntax and semantics of this file see
+#    https://help.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
+#
+# ========================================================================
+
+# the default rule (code review required by one of these if no other
+# later rule takes precedence)
+
+# TODO: use a github group to avoid duplication below
+
+*                                   @abhishekjog @annacichos
+
+# R Language
+
+/R/				    @NikitaNirbhavane
+
+# Analytics
+
+/analytics			    @annacichos
+
+# backup and restore (bnr) utils
+
+/bnr-utils/nz_azConnector           @abhishekjog
+
