@@ -309,12 +309,12 @@ func main() {
     flag.Parse()
 
     if flag.NFlag() == 0 {
-        fmt.Println("No arguments passed to nz_azconnector. Below is the list of valid args:")
+        fmt.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
         flag.PrintDefaults()
     }
 
     // log file configuration setup
-    logfilename := fmt.Sprintf("nz_azconnector_%d_%s.log", os.Getppid(), time.Now().Format("2006-01-02"))
+    logfilename := fmt.Sprintf("nz_azConnector_%d_%s.log", os.Getppid(), time.Now().Format("2006-01-02"))
     logfilepath := path.Join(othargs.logfiledir, logfilename)
     filehandle, err := os.OpenFile(logfilepath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
     if err != nil {
