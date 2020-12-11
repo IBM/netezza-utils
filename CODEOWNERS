@@ -28,5 +28,4 @@
 
 # backup and restore (bnr) utils
 
-/bnr-utils/nz_azConnector           @abhishekjog
-
+/bnr-utils/                         @abhishekjog
