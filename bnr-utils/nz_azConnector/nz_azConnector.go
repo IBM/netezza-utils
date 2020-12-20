@@ -195,6 +195,7 @@ func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint, 
     err = azblob.DownloadBlobToFile(context.Background(), blobURL, 0, 0, filehandle,
                      azblob.DownloadFromBlobOptions{
                      BlockSize:   int64(blockSize * 1024 * 1024),
+                     RetryReaderOptionsPerBlock: azblob.RetryReaderOptions{MaxRetryRequests: 20},
                      Parallelism: uint16(streams),
          })
     if err != nil {
