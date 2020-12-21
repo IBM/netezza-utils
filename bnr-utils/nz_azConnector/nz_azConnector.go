@@ -19,6 +19,7 @@ type Conn struct {
     azkey       string
     azcontainer string
     streams     uint
+    blocksize   int64
 }
 
 type BackupInfo struct {
@@ -59,7 +60,7 @@ func (j *uploadJob) upload() error {
     }
 
     log.Println("Uploading file :", j.absfilepath)
-    return j.job.conn.uploadFile(j.absfilepath, relfilepath, j.job.uniqueid, j.job.conn.streams)
+    return j.job.conn.uploadFile(j.absfilepath, relfilepath, j.job.uniqueid, j.job.conn.streams, j.job.conn.blocksize)
 }
 
 type downloadJob struct {
@@ -76,7 +77,7 @@ type downloadJobResult struct {
 func (j *downloadJob) download() error {
 
     log.Println("Downloading file :", j.blobname)
-    return j.conn.downloadFile(j.outfilepath, j.blobname, j.conn.streams)
+    return j.conn.downloadFile(j.outfilepath, j.blobname, j.conn.streams, j.conn.blocksize)
 }
 
 func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
@@ -89,6 +90,7 @@ func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
     flag.StringVar(&conn.azkey,"key", "", "Azure blob storage access key")
     flag.StringVar(&conn.azcontainer,"container", "", "Azure blob storage container")
     flag.UintVar(&conn.streams,"streams",16,"Number of blocks to upload/download in parallel")
+    flag.Int64Var(&conn.blocksize,"blocksize",100,"Block size in MB to upload/download file")
 
     flag.StringVar(&othargs.uniqueid,"uniqueid", "", "Azure blob storage container")
     flag.StringVar(&othargs.logfiledir,"logfiledir", "/tmp", "Logfile directory for this utility. Default is /tmp dir")
@@ -154,7 +156,7 @@ func (cn *Conn) getBlobURL(blobname string) (azblob.BlobURL, error) {
     return blobURL, err
 }
 
-func (cn *Conn) uploadFile(absfilepath string, relfilepath string, uniqueid string, streams uint) (error){
+func (cn *Conn) uploadFile(absfilepath string, relfilepath string, uniqueid string, streams uint, blockSize int64) (error){
     // Upload the file to a block blob
     blockBlobURL, err := cn.getBlockBlobURL(uniqueid+"/"+relfilepath)
     if err != nil {
@@ -168,13 +170,14 @@ func (cn *Conn) uploadFile(absfilepath string, relfilepath string, uniqueid stri
 
     _, err = azblob.UploadFileToBlockBlob(context.Background(), file, blockBlobURL,
                         azblob.UploadToBlockBlobOptions{
+                        BlockSize:   int64(blockSize * 1024 * 1024),
                         Parallelism: uint16(streams),
             })
 
     return err
 }
 
-func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint) error {
+func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint, blockSize int64) error {
 
     filehandle, err := os.Create(outfilepath)
     if err != nil {
@@ -191,6 +194,8 @@ func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint) 
     // Perform download
     err = azblob.DownloadBlobToFile(context.Background(), blobURL, 0, 0, filehandle,
                      azblob.DownloadFromBlobOptions{
+                     BlockSize:   int64(blockSize * 1024 * 1024),
+                     RetryReaderOptionsPerBlock: azblob.RetryReaderOptions{MaxRetryRequests: 20},
                      Parallelism: uint16(streams),
          })
     if err != nil {
@@ -329,6 +334,7 @@ func main() {
     log.Println("Azure account name :", conn.azaccount)
     log.Println("Azure container :", conn.azcontainer)
     log.Println("Number of blocks to upload/download in parallel :", conn.streams)
+    log.Println("Block size in MB to upload/download file", conn.blocksize)
     log.Println("Backup/Restore directory :",dirlist)
     log.Println("DB name :", backupinfo.dbname)
     log.Println("Nps hostname :", backupinfo.npshost)
