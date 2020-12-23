@@ -53,7 +53,16 @@ type jobResult struct {
     err         error
 }
 
+// global function
+func start(msg string, a ...interface{}) (string, time.Time) {
+    return fmt.Sprintf(msg, a...), time.Now()
+}
+func duration(msg string, start time.Time) {
+    log.Printf("%v: %v\n", msg, time.Since(start))
+}
+
 func (j *uploadJob) upload() error {
+    defer duration(start("upload %s", j.absfilepath))
     relfilepath, err := filepath.Rel(j.job.bkpdir, j.absfilepath)
     if err != nil {
         return fmt.Errorf("Unable to traverse %s, %s: %v", j.job.bkpdir, j.absfilepath, err)
@@ -397,6 +406,7 @@ func main() {
                         return nil
                     }
                     j := uploadJob{ job: job{conn, othargs.uniqueid, bkpdir}, absfilepath: absfilepath }
+                    defer duration(start("submit %s", absfilepath))
                     work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
                                 // are already running
                     return err
