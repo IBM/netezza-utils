@@ -95,7 +95,6 @@ func (j *uploadJob) upload(conn *AZConnector) error {
 }
 
 func (t *AZConnector) Upload() {
-    t.azargs()
     fmt.Println("Uploading with az connector")
 }
 
@@ -171,10 +170,15 @@ func (cn *AZConnector) uploadFile(absfilepath string, relfilepath string, unique
 }
 
 
-func (cn *AZConnector) UploadBkp(bkpdir string, uniqueid string, backupdir string, paralleljobs int) (error){
+func (cn *AZConnector) UploadBkp(bkpdir string, otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
     var err error
-    work := make(chan *uploadJob, paralleljobs)
-    result := make(chan *jobResult, paralleljobs)
+    backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+    _, err = os.Stat(backupdir)
+    if err != nil {
+        return fmt.Errorf("Error in Creating backupdir : %v", err)
+    }
+    work := make(chan *uploadJob, otherargs.paralleljobs)
+    result := make(chan *jobResult, otherargs.paralleljobs)
     done := make(chan bool)
 
     go func() {
@@ -218,7 +222,7 @@ func (cn *AZConnector) UploadBkp(bkpdir string, uniqueid string, backupdir strin
             if info.IsDir() {
                 return nil
             }
-            j := uploadJob{ job: job{uniqueid, bkpdir}, absfilepath: absfilepath }
+            j := uploadJob{ job: job{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
             work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
                         // are already running
             return err
@@ -263,12 +267,14 @@ func (cn *AZConnector) downloadFile(outfilepath string, blobname string, streams
 }
 
 
-func (cn *AZConnector) DownloadBkp(outdir string, uniqueid string, blobpath string, paralleljobs int) (error){
+func (cn *AZConnector) DownloadBkp(outdir string, otherargs *OtherArgs, backupinfo *BackupInfo) (error){
     var err error
-    work := make(chan *downloadJob, paralleljobs)
-    result := make(chan *downloadJobResult, paralleljobs)
+    work := make(chan *downloadJob, otherargs.paralleljobs)
+    result := make(chan *downloadJobResult, otherargs.paralleljobs)
     done := make(chan bool)
 
+    blobpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+    
     // start the workers
     go func() {
         for {
@@ -331,7 +337,7 @@ func (cn *AZConnector) DownloadBkp(outdir string, uniqueid string, blobpath stri
                 // Set up file to download the blob to
                 dir, filename := filepath.Split(blobInfo.Name)
 
-                relfilepath, err := filepath.Rel(uniqueid,dir)
+                relfilepath, err := filepath.Rel(otherargs.uniqueid,dir)
                 if err != nil {
                     return fmt.Errorf("Error in fetching download relative path: %v",err)
                 }
