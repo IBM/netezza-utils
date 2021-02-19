@@ -254,6 +254,7 @@ func (cn *S3connector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
     result := make(chan *downloadJobResultS3, otherargs.paralleljobs)
     done := make(chan bool)
 
+    bkpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
 
     // start the workers
     go func() {
@@ -297,25 +298,26 @@ func (cn *S3connector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
     client.ListObjectsPages(params, func(page *s3.ListObjectsOutput, more bool) (bool) {
         for _, obj := range page.Contents {
             key := *obj.Key
-            // Create the directories in the path
+            if strings.HasPrefix(key, bkpath){
+                // Create the directories in the path
 
-            dir, filename := filepath.Split(key)
-            relfilepath, err := filepath.Rel(otherargs.uniqueid,dir)
+                dir, filename := filepath.Split(key)
+                relfilepath, err := filepath.Rel(otherargs.uniqueid,dir)
 
-            if err != nil {
-                log.Fatalf("Error in fetching download relative path: %v",err)
+                if err != nil {
+                    log.Fatalf("Error in fetching download relative path: %v",err)
+                }
+
+                file := filepath.Join(outdir, relfilepath)
+                err = os.MkdirAll(file, 0777)
+                if err != nil {
+                    log.Fatalf("Error in creating backup directory structure: %v",err)
+                }
+
+                outfilepath := path.Join(file, filename)
+                j := downloadJobS3{ conn:down, key:key, outfilepath:outfilepath }
+                work <- &j
             }
-
-            file := filepath.Join(outdir, relfilepath)
-            err = os.MkdirAll(file, 0777)
-            if err != nil {
-                log.Fatalf("Error in creating backup directory structure: %v",err)
-            }
-
-            outfilepath := path.Join(file, filename)
-            j := downloadJobS3{ conn:down, key:key, outfilepath:outfilepath }
-            work <- &j
-
         }
         return true
     })
