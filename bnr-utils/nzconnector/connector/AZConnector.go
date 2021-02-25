@@ -15,7 +15,6 @@ import (
 )
 
 type iaz interface {
-    azargs()
     getServiceURL() (azblob.ServiceURL, error)
     getContainerURL() (azblob.ContainerURL, error)
     getBlockBlobURL(blobname string) (azblob.BlockBlobURL, error) 
@@ -84,7 +83,7 @@ func (c *AZConnector) ParseConnectorArgs(args string) {
     }
 }
 
-func (j *uploadJob) upload(conn *AZConnector) error {
+func (j *uploadJob) uploadAZ(conn *AZConnector) error {
     relfilepath, err := filepath.Rel(j.job.bkpdir, j.absfilepath)
     if err != nil {
         return fmt.Errorf("Unable to traverse %s, %s: %v", j.job.bkpdir, j.absfilepath, err)
@@ -92,10 +91,6 @@ func (j *uploadJob) upload(conn *AZConnector) error {
 
     log.Println("Uploading file :", j.absfilepath)
     return conn.uploadFile(j.absfilepath, relfilepath, j.job.uniqueid)
-}
-
-func (t *AZConnector) Upload() {
-    fmt.Println("Uploading with az connector")
 }
 
 func (cn *AZConnector) getServiceURL() (azblob.ServiceURL, error) {
@@ -170,70 +165,75 @@ func (cn *AZConnector) uploadFile(absfilepath string, relfilepath string, unique
 }
 
 
-func (cn *AZConnector) UploadBkp(bkpdir string, otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
+func (cn *AZConnector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
     var err error
-    backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
-    _, err = os.Stat(backupdir)
-    if err != nil {
-        return fmt.Errorf("Error in Creating backupdir : %v", err)
-    }
-    work := make(chan *uploadJob, otherargs.paralleljobs)
-    result := make(chan *jobResult, otherargs.paralleljobs)
-    done := make(chan bool)
-
-    go func() {
-        for {
-            select {
-            case j, ok := <- work:
-                if ! ok {
-                    // done
-                    close(result)
-                    return
-                }
-                err := j.upload(cn)
-                jr := jobResult{ job:&j.job, err:err }
-                result <- &jr
-            }
+    log.Println("Uploading Using AZ Connector")
+    dirlist := strings.Split(backupinfo.Dir," ")
+    for _, bkpdir := range dirlist {
+        backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+        _, err = os.Stat(backupdir)
+        if err != nil {
+            return fmt.Errorf("Error in Creating backupdir : %v", err)
         }
-    }()
+        work := make(chan *uploadJob, otherargs.paralleljobs)
+        result := make(chan *jobResult, otherargs.paralleljobs)
+        done := make(chan bool)
 
-    filesuploaded := 0
-    go func() {
-        for {
-            select {
-            case r, ok := <- result:
-                if ! ok {
-                    // work done
-                    done <- true
-                    return
+        go func() {
+            for {
+                select {
+                case j, ok := <- work:
+                    if ! ok {
+                        // done
+                        close(result)
+                        return
+                    }
+                    err := j.uploadAZ(cn)
+                    jr := jobResult{ job:&j.job, err:err }
+                    result <- &jr
                 }
-                if r.err != nil {
-                    // stopping right here so that we
-                    // don't keep on uploading when one has failed
-                    log.Fatalf("%s: %v", r.job, r.err)
-                }
-                filesuploaded++ // this is fine, since this is single threaded increment
             }
-        }
-    }()
+        }()
 
-    err = filepath.Walk(backupdir,
-        func(absfilepath string, info os.FileInfo, err error) error {
-            if info.IsDir() {
-                return nil
+        filesuploaded := 0
+        go func() {
+            for {
+                select {
+                case r, ok := <- result:
+                    if ! ok {
+                        // work done
+                        done <- true
+                        return
+                    }
+                    if r.err != nil {
+                        // stopping right here so that we
+                        // don't keep on uploading when one has failed
+                        log.Fatalf("%s: %v", r.job, r.err)
+                    }
+                    filesuploaded++ // this is fine, since this is single threaded increment
+                }
             }
-            j := uploadJob{ job: job{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
-            work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
-                        // are already running
-            return err
-        })
+        }()
+
+        err = filepath.Walk(backupdir,
+            func(absfilepath string, info os.FileInfo, err error) error {
+                if info.IsDir() {
+                    return nil
+                }
+                j := uploadJob{ job: job{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
+                work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
+                            // are already running
+                return err
+            })
         close(work)
         <- done
-        log.Println("Upload successful. Total files uploaded:", filesuploaded)
-        return err
+        log.Println("Upload successful for Backup Dir  :", bkpdir)
+        log.Println("Total files uploaded:", filesuploaded)
     }
+    return err
+}
 
-func (j *downloadJob) download(conn *AZConnector) error {
+func (j *downloadJob) downloadAZ(conn *AZConnector) error {
 
     log.Println("Downloading file :", j.blobname)
     return conn.downloadFile(j.outfilepath, j.blobname, conn.streams, conn.blocksize)
@@ -267,8 +267,12 @@ func (cn *AZConnector) downloadFile(outfilepath string, blobname string, streams
 }
 
 
-func (cn *AZConnector) DownloadBkp(outdir string, otherargs *OtherArgs, backupinfo *BackupInfo) (error){
+func (cn *AZConnector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (error){
     var err error
+    log.Println("Downloading Using AZ Connector")
+    outdir := backupinfo.Dir
+    arrayLoc:= []string{}
+    arrayContents:= []string{}
     work := make(chan *downloadJob, otherargs.paralleljobs)
     result := make(chan *downloadJobResult, otherargs.paralleljobs)
     done := make(chan bool)
@@ -285,7 +289,7 @@ func (cn *AZConnector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
                     close(result)
                     return
                 }
-                err := j.download(cn)
+                err := j.downloadAZ(cn)
                 jr := downloadJobResult{ blobname:j.blobname, err:err }
                 result <- &jr
             }
@@ -349,6 +353,13 @@ func (cn *AZConnector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
                 }
 
                 outfilepath := path.Join(dumpdir, filename)
+                if (strings.HasSuffix(outfilepath,"locations.txt")){
+                    arrayLoc = append(arrayLoc,outfilepath)
+                }
+                if (strings.HasSuffix(outfilepath,"contents.txt")){
+                    arrayContents = append(arrayContents,outfilepath)
+                }
+
                 j := downloadJob{ conn:*cn, outfilepath:outfilepath, blobname: blobInfo.Name }
                 work <- &j
 
@@ -366,14 +377,11 @@ func (cn *AZConnector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
     }
     close(work)
     <- done
+    log.Println("File Downloaded to dir :", outdir)
     log.Println("Total files downloaded:", filesdownloaded)
+    if (*otherargs.cloudBackup) {
+        updateLocation(arrayLoc,outdir)
+        updateContents(arrayContents)
+    }
     return err
 }
-
-
-func (t AZConnector) azargs() {
-    fmt.Println("STORAGE_ACCOUNT : ", t.azaccount)
-    fmt.Println("STORAGE_ACCOUNT : ", t.blocksize)
-    fmt.Println("STORAGE_ACCOUNT : ", t.streams)  
-}
-

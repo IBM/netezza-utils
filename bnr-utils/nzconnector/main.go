@@ -2,10 +2,14 @@ package main
 
 import (
     "flag"
+    "log"
     "nzconnector/connector"
     "nzconnector/factory"
-    "log"
-    "strings"
+)
+
+const(
+    upload = iota
+    download
 )
 
 func parseConnectorArgs(e Connector.IConnector, args string) {
@@ -27,24 +31,26 @@ func main() {
     connector := Factory.GetConnector(connectorInfo.Connector)
     parseConnectorArgs(connector, connectorInfo.ConnectorArgs)
 
-    dirlist := strings.Split(backupinfo.Dir," ")
-    for _, bkpdir := range dirlist {
-        if (*otherargs.Upload) {
-            // now do the upload
-            log.Println("Uploading backup data to cloud from backup dir", bkpdir)
-            err = connector.UploadBkp(bkpdir, &otherargs, &backupinfo)
-            if (err != nil) {
-                log.Fatalln(err)
-            }
-            log.Println("Upload successful")
+    Connector.SetOperation(&otherargs)
+
+    switch otherargs.Operation {
+            case upload:
+                // now do the upload
+                log.Println("Uploading backup data to cloud for conector : ",connectorInfo.Connector)
+                err = connector.Upload(&otherargs, &backupinfo)
+                if (err != nil) {
+                    log.Fatalln(err)
+                }
+                log.Println("Upload successful")
+            case download:
+                log.Println("Downloading backup data from cloud for connector : ", connectorInfo.Connector)
+                err = connector.Download(&otherargs, &backupinfo)
+                if (err != nil) {
+                    log.Fatalln(err)
+                }
+                log.Println("Download successful")
+            default:
+                log.Fatalln("Invalid Operation, Supported  Upload/Download")
         }
-        if (*otherargs.Download) {
-            log.Println("Downloading backup data from cloud to restore dir", bkpdir)
-            err = connector.DownloadBkp(bkpdir, &otherargs, &backupinfo)
-            if (err != nil) {
-                log.Fatalln(err)
-            }
-            log.Println("Download successful")
-        }
-    }
+
 }

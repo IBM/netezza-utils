@@ -5,14 +5,16 @@ import (
         "log"
         "fmt"
         "time"
+        "io/ioutil"
         "os"
         "path"
+        "strings"
 )
 
 type IConnector interface {
     ParseConnectorArgs(string)
-    UploadBkp(string, *OtherArgs, *BackupInfo) (error)
-    DownloadBkp(string, *OtherArgs, *BackupInfo) (error)
+    Upload(*OtherArgs, *BackupInfo) (error)
+    Download( *OtherArgs, *BackupInfo) (error)
 }
 
 type BackupInfo struct {
@@ -30,9 +32,11 @@ type ConnectorInfo struct {
 type OtherArgs struct {
     uniqueid    string
     logfiledir  string
-    Upload      *bool
-    Download    *bool
+    upload      *bool
+    download    *bool
     paralleljobs int
+    Operation   int
+    cloudBackup *bool
 }
 
 func ParseArgs(backupinfo *BackupInfo, connectorInfo *ConnectorInfo, otherargs *OtherArgs) {
@@ -46,8 +50,9 @@ func ParseArgs(backupinfo *BackupInfo, connectorInfo *ConnectorInfo, otherargs *
 
     flag.StringVar(&otherargs.uniqueid,"uniqueid", "", "Azure blob storage container")
     flag.StringVar(&otherargs.logfiledir,"logfiledir", "/tmp", "Logfile directory for this utility. Default is /tmp dir")
-    otherargs.Upload = flag.Bool("upload", false, "Upload to cloud")
-    otherargs.Download = flag.Bool("download", false, "Download from cloud")
+    otherargs.upload = flag.Bool("upload", false, "Upload to cloud")
+    otherargs.download = flag.Bool("download", false, "Download from cloud")
+    otherargs.cloudBackup = flag.Bool("cloudBackup", false, "Download backup taken on cloud")
     flag.IntVar(&otherargs.paralleljobs,"paralleljobs",6,"Number of parallel files to upload/download")
 }
 
@@ -70,4 +75,52 @@ func SetUpLogFile(backupinfo *BackupInfo, connectorInfo *ConnectorInfo, otherarg
     log.Println("BackupsetID :", backupinfo.backupset)
     log.Println("UniqueID :", otherargs.uniqueid)
     log.Println("Number of files to upload/download in parallel :", otherargs.paralleljobs)
-} 
+}
+
+func SetOperation(otherargs *OtherArgs) {
+    if (*otherargs.upload){
+       otherargs.Operation = 0
+    }
+    if (*otherargs.download){
+        otherargs.Operation = 1
+    }
+}
+
+func updateLocation(arrLoc []string,outdir string){
+    for _,locFile := range arrLoc{
+        f, err := os.OpenFile(locFile,
+            os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+        if err != nil {
+            log.Fatalln(err)
+        }
+        defer f.Close()
+        textAppend := "1,1,1," + outdir
+        if _, err := f.WriteString(textAppend); err != nil {
+            log.Fatalln(err)
+        }
+    }
+}
+
+func updateContents(arrContents []string){
+    for _,contentFile := range arrContents{
+        input, err := ioutil.ReadFile(contentFile)
+        if err != nil {
+            log.Fatalln(err)
+        }
+
+        lines := strings.Split(string(input), "\n")
+        lines = lines[:len(lines)-1]
+        var textline []string
+        for _, line := range lines {
+            r := []rune(line)
+            str := string(r[:len(r)-1]) + "1"
+            textline = append(textline,str)
+        }
+        output := strings.Join(textline, "\n")
+        err = ioutil.WriteFile(contentFile, []byte(output), 0644)
+        if err != nil {
+            log.Fatalln(err)
+        }
+    }
+}
+

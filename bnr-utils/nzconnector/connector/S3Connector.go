@@ -91,7 +91,7 @@ func (c *S3connector) uploadFileS3(absfilepath string, relfilepath string, uniqu
     return err
 }
 
-func (j *downloadJobS3) download(c *S3connector) error {
+func (j *downloadJobS3) downloadS3(c *S3connector) error {
     log.Println("Downloading file :", j.key)
     return c.downloadFile(j.outfilepath, j.key, j.conn )
 }
@@ -113,6 +113,7 @@ func (c *S3connector) downloadFile(outfilepath string, key string, conn *s3manag
     if((numBytes < 0) && (err != nil)){
         return fmt.Errorf("Error in downloading File: %v",err)
     }
+
     return err
 }
 
@@ -180,82 +181,88 @@ func (c *S3connector) ParseConnectorArgs(args string) {
     }
 }
 
-func (c *S3connector) UploadBkp(bkpdir string, otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
+func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
     var err error
     log.Println("Uploading Using S3 Connector")
-    _, err = os.Stat(bkpdir)
-    if err != nil {
-        return fmt.Errorf("Error Directory not present : %v", err)
-    }
 
-    work := make(chan *uploadJobS3, otherargs.paralleljobs)
-    result := make(chan *jobResultS3, otherargs.paralleljobs)
-    done := make(chan bool)
-
-    go func() {
-        for {
-            select {
-            case j, ok := <- work:
-                if ! ok {
-                    // done
-                    close(result)
-                    return
-                }
-                err := j.uploadS3(c)
-                jr := jobResultS3{jobS3:&j.jobS3, err:err }
-                result <- &jr
-            }
+    dirlist := strings.Split(backupinfo.Dir," ")
+    for _, bkpdir := range dirlist {
+        backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+        _, err = os.Stat(backupdir)
+        if err != nil {
+            return fmt.Errorf("Error Directory not present : %v", err)
         }
-    }()
 
-    filesuploaded := 0
-    go func() {
-        for {
-            select {
-                case r, ok := <- result:
+        work := make(chan *uploadJobS3, otherargs.paralleljobs)
+        result := make(chan *jobResultS3, otherargs.paralleljobs)
+        done := make(chan bool)
+
+        go func() {
+            for {
+                select {
+                case j, ok := <- work:
                     if ! ok {
-                        // work done
-                        done <- true
+                        // done
+                        close(result)
                         return
+                    }
+                    err := j.uploadS3(c)
+                    jr := jobResultS3{jobS3:&j.jobS3, err:err }
+                    result <- &jr
                 }
-                if r.err != nil {
-                    // stopping right here so that we
-                    // don't keep on uploading when one has failed
-                    log.Fatalf("%s: %v", r.jobS3, r.err)
+            }
+        }()
+
+        filesuploaded := 0
+        go func() {
+            for {
+                select {
+                    case r, ok := <- result:
+                        if ! ok {
+                            // work done
+                            done <- true
+                            return
+                    }
+                    if r.err != nil {
+                        // stopping right here so that we
+                        // don't keep on uploading when one has failed
+                        log.Fatalf("%s: %v", r.jobS3, r.err)
+                    }
+                    filesuploaded++ // this is fine, since this is single threaded increment
                 }
-                filesuploaded++ // this is fine, since this is single threaded increment
             }
-        }
-    }()
+        }()
 
-    log.Println("Uploading Dir :", bkpdir)
-    err = filepath.Walk(bkpdir,
-        func(absfilepath string, info os.FileInfo, err error) error {
-            if info.IsDir() {
-                return nil
-            }
-            j := uploadJobS3{ jobS3: jobS3{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
-            work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
-                        // are already running
-            return err
-        })
+        err = filepath.Walk(bkpdir,
+            func(absfilepath string, info os.FileInfo, err error) error {
+                if info.IsDir() {
+                    return nil
+                }
+                j := uploadJobS3{ jobS3: jobS3{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
+                work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
+                            // are already running
+                return err
+            })
 
-    close(work)
-    <- done
-    log.Println("Upload using S3 connector successful. Total files uploaded:", filesuploaded)
+        close(work)
+        <- done
+        log.Println("Upload using S3 connector successful for directory :", bkpdir)
+        log.Println("Total files uploaded:", filesuploaded)
+    }
     return err
 }
 
-func (cn *S3connector) DownloadBkp(outdir string, otherargs *OtherArgs, backupinfo *BackupInfo) (error){
+func (cn *S3connector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (error){
     log.Println("Downloading Using S3 Connector")
-
     var err error
+    outdir := backupinfo.Dir
+    arrayLoc:= []string{}
+    arrayContents:= []string{}
     work := make(chan *downloadJobS3, otherargs.paralleljobs)
     result := make(chan *downloadJobResultS3, otherargs.paralleljobs)
     done := make(chan bool)
 
     bkpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
-
     // start the workers
     go func() {
         for {
@@ -266,7 +273,7 @@ func (cn *S3connector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
                     close(result)
                     return
                 }
-                err := j.download(cn)
+                err := j.downloadS3(cn)
                 jr := downloadJobResultS3{ key:j.key, err:err }
                 result <- &jr
             }
@@ -315,6 +322,12 @@ func (cn *S3connector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
                 }
 
                 outfilepath := path.Join(file, filename)
+                if (strings.HasSuffix(outfilepath,"locations.txt")){
+                    arrayLoc = append(arrayLoc,outfilepath)
+                }
+                if (strings.HasSuffix(outfilepath,"contents.txt")){
+                    arrayContents = append(arrayContents,outfilepath)
+                }
                 j := downloadJobS3{ conn:down, key:key, outfilepath:outfilepath }
                 work <- &j
             }
@@ -322,9 +335,12 @@ func (cn *S3connector) DownloadBkp(outdir string, otherargs *OtherArgs, backupin
         return true
     })
 
-    close(work)
-    <- done
-    log.Println("Total files downloaded using S3 Connector:", filesdownloaded)
+        close(work)
+        <- done
+        log.Println("Total files downloaded using S3 Connector:", filesdownloaded)
+        if (*otherargs.cloudBackup) {
+            updateLocation(arrayLoc,outdir)
+            updateContents(arrayContents)
+        }
     return err
 }
-
