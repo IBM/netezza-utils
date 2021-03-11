@@ -22,6 +22,7 @@ type BackupInfo struct {
     Dir         string
     npshost     string
     backupset   string
+    increment   string
 }
 
 type ConnectorInfo struct {
@@ -44,6 +45,7 @@ func ParseArgs(backupinfo *BackupInfo, connectorInfo *ConnectorInfo, otherargs *
     flag.StringVar(&backupinfo.Dir, "dir", "", "Full path to the directory in which the backup already exists or should be downloaded")
     flag.StringVar(&backupinfo.npshost, "npshost", "", "Name of the NPS host as it appears in the backups")
     flag.StringVar(&backupinfo.backupset, "backupset", "", "Name of the backupset to be uploaded/downloaded")
+    flag.StringVar(&backupinfo.increment, "increment", "", "Increment Number to be uploaded/downloaded")
 
     flag.StringVar(&connectorInfo.Connector, "connector", "", "Destination cloud store")
     flag.StringVar(&connectorInfo.ConnectorArgs, "connectorArgs", "", "Arguments for cloud store")

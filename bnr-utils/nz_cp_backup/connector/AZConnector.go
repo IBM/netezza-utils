@@ -170,7 +170,7 @@ func (cn *AZConnector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (e
     log.Println("Uploading Using AZ Connector")
     dirlist := strings.Split(backupinfo.Dir," ")
     for _, bkpdir := range dirlist {
-        backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+        backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset, backupinfo.increment)
         _, err = os.Stat(backupdir)
         if err != nil {
             return fmt.Errorf("Error in Creating backupdir : %v", err)
@@ -277,7 +277,7 @@ func (cn *AZConnector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
     result := make(chan *downloadJobResult, otherargs.paralleljobs)
     done := make(chan bool)
 
-    blobpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+    blobpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset, backupinfo.increment)
     
     // start the workers
     go func() {

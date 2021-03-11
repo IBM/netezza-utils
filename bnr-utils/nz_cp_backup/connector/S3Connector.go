@@ -187,7 +187,7 @@ func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (er
 
     dirlist := strings.Split(backupinfo.Dir," ")
     for _, bkpdir := range dirlist {
-        backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+        backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset, backupinfo.increment)
         _, err = os.Stat(backupdir)
         if err != nil {
             return fmt.Errorf("Error Directory not present : %v", err)
@@ -238,9 +238,11 @@ func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (er
                 if info.IsDir() {
                     return nil
                 }
-                j := uploadJobS3{ jobS3: jobS3{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
-                work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
-                            // are already running
+                if ( strings.HasPrefix(absfilepath, backupdir) ) {
+                    j := uploadJobS3{ jobS3: jobS3{otherargs.uniqueid, bkpdir}, absfilepath: absfilepath }
+                    work <- &j  // this will hang until at least one of the prior uploads finish if other.paralleljobs
+                                // are already running
+                }
                 return err
             })
 
@@ -262,7 +264,7 @@ func (cn *S3connector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
     result := make(chan *downloadJobResultS3, otherargs.paralleljobs)
     done := make(chan bool)
 
-    bkpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset)
+    bkpath := filepath.Join(otherargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupset, backupinfo.increment)
     // start the workers
     go func() {
         for {
