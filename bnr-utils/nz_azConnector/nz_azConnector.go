@@ -5,6 +5,7 @@ import (
     "fmt"
     "net/url"
     "time"
+    "io"
     "os"
     "context"
     "path/filepath"
@@ -102,8 +103,7 @@ func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
 
 func handleErrors(err error) {
     if err != nil {
-        fmt.Println(err)
-        log.Fatalln(err)
+        log.Fatalln("Error:", err)
     }
 }
 
@@ -241,8 +241,7 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
                 if r.err != nil {
                     // stopping right here so that we
                     // don't keep on downloading when one has failed
-                    fmt.Printf("%s: %v", r.blobname, r.err)
-                    log.Fatalf("%s: %v", r.blobname, r.err)
+                    log.Fatalf("Error: %s: %v", r.blobname, r.err)
                 }
                 filesdownloaded++ // this is fine, since this is single threaded increment
             }
@@ -293,14 +292,12 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
         }
 
         if blobfound == 0 {
-            fmt.Println("No matching blob found. Please check if DB name, hostname, uniqueid or containername is correct")
             log.Println("No matching blob found. Please check if DB name, hostname, uniqueid or containername is correct")
             return fmt.Errorf("No matching blob found.")
         }
     }
     close(work)
     <- done
-    fmt.Println("Total files downloaded:", filesdownloaded)
     log.Println("Total files downloaded:", filesdownloaded)
     return err
 }
@@ -326,7 +323,8 @@ func main() {
     if err != nil {
         fmt.Errorf("Error in opening logfile: %v",err)
     }
-    log.SetOutput(filehandle)
+    w := io.MultiWriter(os.Stdout, filehandle)
+    log.SetOutput(w)
     prefixStr := fmt.Sprintf("%s  ", time.Now().UTC().Format("2006-01-02 15:04:05 EST")) + fmt.Sprintf("%-7s", "[INFO]")
     log.SetFlags(0)
     log.SetPrefix(prefixStr)
@@ -385,8 +383,7 @@ func main() {
                         if r.err != nil {
                             // stopping right here so that we
                             // don't keep on uploading when one has failed
-                            fmt.Printf("%s: %v", r.job, r.err)
-                            log.Fatalf("%s: %v", r.job, r.err)
+                            log.Fatalf("Error: %s: %v", r.job, r.err)
                         }
                         filesuploaded++ // this is fine, since this is single threaded increment
                     }
@@ -406,7 +403,6 @@ func main() {
             close(work)
             <- done
             handleErrors(err)
-            fmt.Println("Upload successful. Total files uploaded:", filesuploaded)
             log.Println("Upload successful. Total files uploaded:", filesuploaded)
         }
 
