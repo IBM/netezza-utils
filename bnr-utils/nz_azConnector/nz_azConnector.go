@@ -102,6 +102,7 @@ func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
 
 func handleErrors(err error) {
     if err != nil {
+        fmt.Println(err)
         log.Fatalln(err)
     }
 }
@@ -239,7 +240,8 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
                 }
                 if r.err != nil {
                     // stopping right here so that we
-                    // don't keep on uploading when one has failed
+                    // don't keep on downloading when one has failed
+                    fmt.Printf("%s: %v", r.blobname, r.err)
                     log.Fatalf("%s: %v", r.blobname, r.err)
                 }
                 filesdownloaded++ // this is fine, since this is single threaded increment
@@ -290,16 +292,15 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
             }
         }
 
-        if blobfound > 0 {
+        if blobfound == 0 {
+            fmt.Println("No matching blob found. Please check if DB name, hostname, uniqueid or containername is correct")
             log.Println("No matching blob found. Please check if DB name, hostname, uniqueid or containername is correct")
             return fmt.Errorf("No matching blob found.")
-        }
-        if blobfound == 0 {
-            blobfound++
         }
     }
     close(work)
     <- done
+    fmt.Println("Total files downloaded:", filesdownloaded)
     log.Println("Total files downloaded:", filesdownloaded)
     return err
 }
@@ -384,6 +385,7 @@ func main() {
                         if r.err != nil {
                             // stopping right here so that we
                             // don't keep on uploading when one has failed
+                            fmt.Printf("%s: %v", r.job, r.err)
                             log.Fatalf("%s: %v", r.job, r.err)
                         }
                         filesuploaded++ // this is fine, since this is single threaded increment
@@ -404,6 +406,7 @@ func main() {
             close(work)
             <- done
             handleErrors(err)
+            fmt.Println("Upload successful. Total files uploaded:", filesuploaded)
             log.Println("Upload successful. Total files uploaded:", filesuploaded)
         }
 
