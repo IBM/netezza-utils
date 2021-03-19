@@ -112,12 +112,12 @@ func (cn *Conn) getServiceURL() (azblob.ServiceURL, error) {
     us := fmt.Sprintf("https://%s.blob.core.windows.net/", cn.azaccount)
     u, err := url.Parse(us)
     if err != nil {
-        return serviceURL, fmt.Errorf("Unable to parse URL: %s : %v", us, err)
+        return serviceURL, fmt.Errorf("Unable to parse URL %s. Ensure azure storage account name:%s is correct.\n Error details: %v", us, cn.azaccount, err)
     }
 
     credential, err := azblob.NewSharedKeyCredential(cn.azaccount, cn.azkey)
     if err != nil {
-        return serviceURL, fmt.Errorf("Unable to create shared credentials: %v", err)
+        return serviceURL, fmt.Errorf("Unable to create shared credentials. Ensure azure storage account name:%s and azure key are correct.\n Error details: %v", cn.azaccount, err)
     }
 
     p := azblob.NewPipeline(credential, azblob.PipelineOptions{
@@ -166,7 +166,7 @@ func (cn *Conn) uploadFile(absfilepath string, relfilepath string, uniqueid stri
 
     file, err := os.Open(absfilepath)
     if err != nil {
-        return fmt.Errorf("Error in opening backup file : %v", err)
+        return fmt.Errorf("Error in opening backup file on file system: %v", err)
     }
 
     _, err = azblob.UploadFileToBlockBlob(context.Background(), file, blockBlobURL,
@@ -259,7 +259,7 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
         // Get a result segment starting with the blob indicated by the current Marker.
         listBlob, err := containerURL.ListBlobsFlatSegment(context.Background(), marker, azblob.ListBlobsSegmentOptions{})
         if err != nil {
-            return fmt.Errorf("Error in listing segment of blobs: %v",err)
+            return fmt.Errorf("Unable to list segment of blobs with storage account:%s and container:%s. Ensure azure storage account and container are correct.\n Error details: %v",cn.azaccount, cn.azcontainer, err)
         }
 
         // ListBlobs returns the start of the next segment; you MUST use this to get
@@ -292,8 +292,7 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
         }
 
         if blobfound == 0 {
-            log.Println("No matching blob found. Please check if DB name, hostname, uniqueid or containername is correct")
-            return fmt.Errorf("No matching blob found.")
+            return fmt.Errorf("No matching blob found. Please check if DB name, hostname, uniqueid or containername are correct. If error persists contact IBM support team.")
         }
     }
     close(work)
@@ -348,7 +347,9 @@ func main() {
             log.Println("Uploading backup data to azure cloud from backup dir", bkpdir)
             backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
             _, err = os.Stat(backupdir)
-            handleErrors(err)
+            if err != nil {
+                handleErrors(fmt.Errorf("Unable to traverse existing backup on file system: %v",err))
+            }
 
             work := make(chan *uploadJob, othargs.paralleljobs)
             result := make(chan *jobResult, othargs.paralleljobs)
@@ -383,7 +384,8 @@ func main() {
                         if r.err != nil {
                             // stopping right here so that we
                             // don't keep on uploading when one has failed
-                            log.Fatalf("Error: %s: %v", r.job, r.err)
+                            log.Println("Error while uploading file. Ensure azure storage account name, azure key and container name are correct. If error persists contact IBM support team.")
+                            log.Fatalf("Azure storage account:%s accessing container:%s failed with error: %v", r.job.conn.azaccount, r.job.conn.azcontainer, r.err)
                         }
                         filesuploaded++ // this is fine, since this is single threaded increment
                     }
@@ -402,7 +404,9 @@ func main() {
                 })
             close(work)
             <- done
-            handleErrors(err)
+            if err != nil {
+                handleErrors(fmt.Errorf("Unable to traverse existing backup on file system: %v",err))
+            }
             log.Println("Upload successful. Total files uploaded:", filesuploaded)
         }
 
