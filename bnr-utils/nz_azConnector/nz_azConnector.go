@@ -81,6 +81,22 @@ func (j *downloadJob) download() error {
     return j.conn.downloadFile(j.outfilepath, j.blobname, j.conn.streams, j.conn.blocksize)
 }
 
+func (c Conn) String() string {
+    return fmt.Sprintf("account:%s container:%s", c.azaccount, c.azcontainer)
+}
+
+func (j job) String() string {
+    return fmt.Sprintf("conn:[%s] backupDir:%s id:%s", j.conn, j.bkpdir, j.uniqueid)
+}
+
+func (u uploadJob) String() string {
+    return fmt.Sprintf("%s file:%s", u.job, u.absfilepath)
+}
+
+func (d downloadJob) String() string {
+    return fmt.Sprintf("conn:[%s] blob:%s file:%s", d.conn, d.blobname, d.outfilepath)
+}
+
 func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
     flag.StringVar(&backupinfo.dbname,"db", "", "Database name")
     flag.StringVar(&backupinfo.dirs,"dir", "", "Full path to the directory in which the backup already exists or should be downloaded")
@@ -292,7 +308,7 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
         }
 
         if blobfound == 0 {
-            return fmt.Errorf("No matching blob found. Please check if DB name, hostname, uniqueid or containername are correct. If error persists contact IBM support team.")
+            return fmt.Errorf("No matching blob found. Please check if DB name, hostname, uniqueid or containername are correct. If error persists contact IBM support team. Azaccount:%s AzContainer:%s Blobpath:%s, Uniqueid:%s", cn.azaccount, cn.azcontainer, blobpath, uniqueid)
         }
     }
     close(work)
@@ -348,7 +364,7 @@ func main() {
             backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
             _, err = os.Stat(backupdir)
             if err != nil {
-                handleErrors(fmt.Errorf("Unable to traverse existing backup on file system: %v",err))
+                handleErrors(fmt.Errorf("Cannot access directory '%s': %v", backupdir, err))
             }
 
             work := make(chan *uploadJob, othargs.paralleljobs)
@@ -384,7 +400,7 @@ func main() {
                         if r.err != nil {
                             // stopping right here so that we
                             // don't keep on uploading when one has failed
-                            log.Println("Error while uploading file. Ensure azure storage account name, azure key and container name are correct. If error persists contact IBM support team.")
+                            log.Println("Error while uploading file. Ensure azure storage account name, azure key and container name are correct. If error persists contact IBM support team.", *r.job)
                             log.Fatalf("Azure storage account:%s accessing container:%s failed with error: %v", r.job.conn.azaccount, r.job.conn.azcontainer, r.err)
                         }
                         filesuploaded++ // this is fine, since this is single threaded increment
@@ -405,7 +421,7 @@ func main() {
             close(work)
             <- done
             if err != nil {
-                handleErrors(fmt.Errorf("Unable to traverse existing backup on file system: %v",err))
+                handleErrors(fmt.Errorf("Error reading directory: %s: %v", backupdir, err))
             }
             log.Println("Upload successful. Total files uploaded:", filesuploaded)
         }
