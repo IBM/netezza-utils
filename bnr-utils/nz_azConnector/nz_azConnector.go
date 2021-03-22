@@ -364,7 +364,7 @@ func main() {
             backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
             _, err = os.Stat(backupdir)
             if err != nil {
-                handleErrors(fmt.Errorf("Cannot access directory '%s': %v", backupdir, err))
+                handleErrors(fmt.Errorf("Cannot access directory '%s': %v. Please check if DB name, hostname are correct.", backupdir, err))
             }
 
             work := make(chan *uploadJob, othargs.paralleljobs)
@@ -421,7 +421,7 @@ func main() {
             close(work)
             <- done
             if err != nil {
-                handleErrors(fmt.Errorf("Error reading directory: %s: %v", backupdir, err))
+                handleErrors(fmt.Errorf("Error reading directory: %s: %v. Please check if DB name, hostname are correct.", backupdir, err))
             }
             log.Println("Upload successful. Total files uploaded:", filesuploaded)
         }
