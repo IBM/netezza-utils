@@ -11,6 +11,7 @@ import (
     "path"
     "strings"
     "log"
+    "io/ioutil"
     "github.com/Azure/azure-storage-blob-go/azblob"
 )
 
@@ -35,6 +36,7 @@ type OtherArgs struct {
     upload      *bool
     download    *bool
     paralleljobs int
+    cloudBackup *bool
 }
 
 type job struct {
@@ -97,6 +99,7 @@ func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
     othargs.upload = flag.Bool("upload", false, "Upload to cloud")
     othargs.download = flag.Bool("download", false, "Download from cloud")
     flag.IntVar(&othargs.paralleljobs,"paralleljobs",6,"Number of parallel files to upload/download")
+    othargs.cloudBackup = flag.Bool("cloudBackup", false, "Download backup taken on cloud")
 }
 
 
@@ -204,8 +207,10 @@ func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint, 
     return err
 }
 
-func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int) (error){
+func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int, cloudBackup bool ) (error){
     var err error
+    arrayLoc:= []string{}
+    arrayContents:= []string{}
     work := make(chan *downloadJob, paralleljobs)
     result := make(chan *downloadJobResult, paralleljobs)
     done := make(chan bool)
@@ -282,6 +287,14 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
                     return fmt.Errorf("Error in creating backup directory structure: %v",err)
                 }
 
+                outfile := path.Join(dumpdir, filename)
+                if (strings.HasSuffix(outfile,"locations.txt")){
+                    arrayLoc = append(arrayLoc,outfile)
+                }
+                if (strings.HasSuffix(outfile,"contents.txt")){
+                    arrayContents = append(arrayContents,outfile)
+                }
+
                 outfilepath := path.Join(dumpdir, filename)
                 j := downloadJob{ conn:*cn, outfilepath:outfilepath, blobname: blobInfo.Name }
                 work <- &j
@@ -301,7 +314,49 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
     close(work)
     <- done
     log.Println("Total files downloaded:", filesdownloaded)
+    if (cloudBackup) {
+        updateLocation(arrayLoc,outdir)
+        updateContents(arrayContents)
+    }
     return err
+}
+
+func updateLocation(arrLoc []string,outdir string){
+    for _,locFile := range arrLoc{
+        f, err := os.OpenFile(locFile,
+            os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+        if err != nil {
+            log.Fatalln(err)
+        }
+        defer f.Close()
+        textAppend := "1,1,1," + outdir
+        if _, err := f.WriteString(textAppend); err != nil {
+            log.Fatalln(err)
+        }
+    }
+}
+
+func updateContents(arrContents []string){
+    for _,contentFile := range arrContents{
+        input, err := ioutil.ReadFile(contentFile)
+        if err != nil {
+            log.Fatalln(err)
+        }
+
+        lines := strings.Split(string(input), "\n")
+        lines = lines[:len(lines)-1]
+        var textline []string
+        for _, line := range lines {
+            r := []rune(line)
+            str := string(r[:len(r)-1]) + "1"
+            textline = append(textline,str)
+        }
+        output := strings.Join(textline, "\n")
+        err = ioutil.WriteFile(contentFile, []byte(output), 0644)
+        if err != nil {
+            log.Fatalln(err)
+        }
+    }
 }
 
 func main() {
@@ -410,7 +465,7 @@ func main() {
         if (*othargs.download) {
             log.Println("Downloading backup data from azure cloud to restore dir", bkpdir)
             blobpath := filepath.Join(othargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
-            err = conn.downloadBkp(bkpdir, othargs.uniqueid, blobpath, conn.streams, othargs.paralleljobs)
+            err = conn.downloadBkp(bkpdir, othargs.uniqueid, blobpath, conn.streams, othargs.paralleljobs, *othargs.cloudBackup)
             handleErrors(err)
             log.Println("Download successful")
         }
