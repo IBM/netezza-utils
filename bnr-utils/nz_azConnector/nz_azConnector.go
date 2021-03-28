@@ -36,7 +36,6 @@ type OtherArgs struct {
     upload      *bool
     download    *bool
     paralleljobs int
-    cloudBackup *bool
 }
 
 type job struct {
@@ -99,7 +98,6 @@ func parseArgs(conn *Conn, backupinfo *BackupInfo, othargs *OtherArgs) {
     othargs.upload = flag.Bool("upload", false, "Upload to cloud")
     othargs.download = flag.Bool("download", false, "Download from cloud")
     flag.IntVar(&othargs.paralleljobs,"paralleljobs",6,"Number of parallel files to upload/download")
-    othargs.cloudBackup = flag.Bool("cloudBackup", false, "Download backup taken on cloud")
 }
 
 
@@ -207,7 +205,7 @@ func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint, 
     return err
 }
 
-func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int, cloudBackup bool ) (error){
+func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int ) (error){
     var err error
     arrayLoc:= []string{}
     arrayContents:= []string{}
@@ -314,24 +312,33 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
     close(work)
     <- done
     log.Println("Total files downloaded:", filesdownloaded)
-    if (cloudBackup) {
-        updateLocation(arrayLoc,outdir)
-        updateContents(arrayContents)
-    }
+    updateLocation(arrayLoc,outdir)
+    updateContents(arrayContents)
     return err
 }
 
 func updateLocation(arrLoc []string,outdir string){
     for _,locFile := range arrLoc{
-        f, err := os.OpenFile(locFile,
-            os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+        input, err := ioutil.ReadFile(locFile)
         if err != nil {
+            log.Println("Unable to Override Contents and Location as download dir not Present.")
             log.Fatalln(err)
         }
-        defer f.Close()
-        textAppend := "1,1,1," + outdir
-        if _, err := f.WriteString(textAppend); err != nil {
-            log.Fatalln(err)
+        lines := strings.Split(string(input), "\n")
+        if (len(lines) == 2 && !strings.HasSuffix(lines[len(lines) -2] , outdir)) {
+            f, err := os.OpenFile(locFile,
+                os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+            if err != nil {
+                log.Println("Unable to Override Location as Unable to open file.")
+                log.Fatalln(err)
+            }
+            defer f.Close()
+            textAppend := "1,1,1," + outdir + "\n"
+            if _, err := f.WriteString(textAppend); err != nil {
+                log.Println("Unable to Override Location as Write to File Failed.")
+                log.Fatalln(err)
+            log.Println("Location.txt override for cloud  backup")
+            }
         }
     }
 }
@@ -340,21 +347,33 @@ func updateContents(arrContents []string){
     for _,contentFile := range arrContents{
         input, err := ioutil.ReadFile(contentFile)
         if err != nil {
+            log.Println("Unable to Override Contents as unable to open contents.txt")
             log.Fatalln(err)
         }
 
         lines := strings.Split(string(input), "\n")
-        lines = lines[:len(lines)-1]
         var textline []string
-        for _, line := range lines {
-            r := []rune(line)
-            str := string(r[:len(r)-1]) + "1"
-            textline = append(textline,str)
+        var overide bool = false
+        for i := 0 ; i < len(lines) ; i++ {
+            line := lines[i]
+            token := strings.Split(line, ",")
+            if ( strings.HasSuffix(token[len(token)-1],"0" ) ) {
+                r := []rune(line)
+                str := string(r[:len(r)-1]) + "1"
+                textline = append(textline,str)
+                overide = true
+            } else {
+                textline = append(textline,line)
+            }
         }
         output := strings.Join(textline, "\n")
         err = ioutil.WriteFile(contentFile, []byte(output), 0644)
         if err != nil {
+            log.Println("Unable to Override Contents as Write to File Failed.")
             log.Fatalln(err)
+        } 
+        if (overide){
+            log.Println("Contents.txt override for cloud backup")
         }
     }
 }
@@ -465,7 +484,7 @@ func main() {
         if (*othargs.download) {
             log.Println("Downloading backup data from azure cloud to restore dir", bkpdir)
             blobpath := filepath.Join(othargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
-            err = conn.downloadBkp(bkpdir, othargs.uniqueid, blobpath, conn.streams, othargs.paralleljobs, *othargs.cloudBackup)
+            err = conn.downloadBkp(bkpdir, othargs.uniqueid, blobpath, conn.streams, othargs.paralleljobs)
             handleErrors(err)
             log.Println("Download successful")
         }
