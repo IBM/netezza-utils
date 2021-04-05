@@ -350,7 +350,7 @@ func updateContents(arrContents []string){
         for i := 0 ; i < len(lines) ; i++ {
             line := lines[i]
             token := strings.Split(line, ",")
-            if ( strings.HasSuffix(token[len(token)-1],"0" ) ) {
+            if ( token[len(token)-1] == "0" ) {
                 r := []rune(line)
                 str := string(r[:len(r)-1]) + "1"
                 textline = append(textline,str)
