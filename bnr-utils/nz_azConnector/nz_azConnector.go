@@ -207,8 +207,8 @@ func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint, 
 
 func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int ) (error){
     var err error
-    arrayLoc:= []string{}
-    arrayContents:= []string{}
+    locations:= []string{}
+    contents:= []string{}
     work := make(chan *downloadJob, paralleljobs)
     result := make(chan *downloadJobResult, paralleljobs)
     done := make(chan bool)
@@ -285,12 +285,11 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
                     return fmt.Errorf("Error in creating backup directory structure: %v",err)
                 }
 
-                outfile := path.Join(dumpdir, filename)
-                if (strings.HasSuffix(outfile,"locations.txt")){
-                    arrayLoc = append(arrayLoc,outfile)
-                }
-                if (strings.HasSuffix(outfile,"contents.txt")){
-                    arrayContents = append(arrayContents,outfile)
+                switch filename {
+                case "locations.txt":
+                    locations = append(locations, path.Join(dumpdir, filename))
+                case "contents.txt":
+                    contents = append(contents, path.Join(dumpdir, filename))
                 }
 
                 outfilepath := path.Join(dumpdir, filename)
@@ -312,8 +311,8 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
     close(work)
     <- done
     log.Println("Total files downloaded:", filesdownloaded)
-    updateLocation(arrayLoc,outdir)
-    updateContents(arrayContents)
+    updateLocation(locations,outdir)
+    updateContents(contents)
     return err
 }
 
@@ -321,23 +320,19 @@ func updateLocation(arrLoc []string,outdir string){
     for _,locFile := range arrLoc{
         input, err := ioutil.ReadFile(locFile)
         if err != nil {
-            log.Println("Unable to Override Contents and Location as download dir not Present.")
-            log.Fatalln(err)
+            log.Fatalf("Unable to open %s to read: %v\n", locFile, err)
         }
         lines := strings.Split(string(input), "\n")
         if (len(lines) == 2 && !strings.HasSuffix(lines[len(lines) -2] , outdir)) {
             f, err := os.OpenFile(locFile,
                 os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
             if err != nil {
-                log.Println("Unable to Override Location as Unable to open file.")
-                log.Fatalln(err)
+                log.Fatalf("Unable to open %s for update: %v\n", locFile, err)
             }
             defer f.Close()
             textAppend := "1,1,1," + outdir + "\n"
             if _, err := f.WriteString(textAppend); err != nil {
-                log.Println("Unable to Override Location as Write to File Failed.")
-                log.Fatalln(err)
-            log.Println("Location.txt override for cloud  backup")
+                log.Fatalf("Unable to update %s: %v\n", locFile, err)
             }
         }
     }
@@ -347,13 +342,11 @@ func updateContents(arrContents []string){
     for _,contentFile := range arrContents{
         input, err := ioutil.ReadFile(contentFile)
         if err != nil {
-            log.Println("Unable to Override Contents as unable to open contents.txt")
-            log.Fatalln(err)
+            log.Fatalln("Unable to open %s to read: %v\n",contentFile,err)
         }
 
         lines := strings.Split(string(input), "\n")
         var textline []string
-        var overide bool = false
         for i := 0 ; i < len(lines) ; i++ {
             line := lines[i]
             token := strings.Split(line, ",")
@@ -361,7 +354,6 @@ func updateContents(arrContents []string){
                 r := []rune(line)
                 str := string(r[:len(r)-1]) + "1"
                 textline = append(textline,str)
-                overide = true
             } else {
                 textline = append(textline,line)
             }
@@ -369,12 +361,8 @@ func updateContents(arrContents []string){
         output := strings.Join(textline, "\n")
         err = ioutil.WriteFile(contentFile, []byte(output), 0644)
         if err != nil {
-            log.Println("Unable to Override Contents as Write to File Failed.")
-            log.Fatalln(err)
+            log.Fatalln("Unable to update %s: %v\n",contentFile,err)
         } 
-        if (overide){
-            log.Println("Contents.txt override for cloud backup")
-        }
     }
 }
 
