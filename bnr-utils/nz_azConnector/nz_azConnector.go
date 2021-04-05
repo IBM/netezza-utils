@@ -351,12 +351,9 @@ func updateContents(arrContents []string){
             line := lines[i]
             token := strings.Split(line, ",")
             if ( token[len(token)-1] == "0" ) {
-                r := []rune(line)
-                str := string(r[:len(r)-1]) + "1"
-                textline = append(textline,str)
-            } else {
-                textline = append(textline,line)
+                token[len(token)-1] = "1"
             }
+            textline = append(textline, strings.Join(token, ","))
         }
         output := strings.Join(textline, "\n")
         err = ioutil.WriteFile(contentFile, []byte(output), 0644)
