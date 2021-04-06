@@ -11,6 +11,7 @@ import (
     "path"
     "strings"
     "log"
+    "io/ioutil"
     "github.com/Azure/azure-storage-blob-go/azblob"
 )
 
@@ -204,8 +205,10 @@ func (cn *Conn) downloadFile(outfilepath string, blobname string, streams uint, 
     return err
 }
 
-func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int) (error){
+func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, streams uint, paralleljobs int ) (error){
     var err error
+    locations:= []string{}
+    contents:= []string{}
     work := make(chan *downloadJob, paralleljobs)
     result := make(chan *downloadJobResult, paralleljobs)
     done := make(chan bool)
@@ -282,6 +285,13 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
                     return fmt.Errorf("Error in creating backup directory structure: %v",err)
                 }
 
+                switch filename {
+                case "locations.txt":
+                    locations = append(locations, path.Join(dumpdir, filename))
+                case "contents.txt":
+                    contents = append(contents, path.Join(dumpdir, filename))
+                }
+
                 outfilepath := path.Join(dumpdir, filename)
                 j := downloadJob{ conn:*cn, outfilepath:outfilepath, blobname: blobInfo.Name }
                 work <- &j
@@ -301,7 +311,56 @@ func (cn *Conn) downloadBkp(outdir string, uniqueid string, blobpath string, str
     close(work)
     <- done
     log.Println("Total files downloaded:", filesdownloaded)
+    updateLocation(locations,outdir)
+    updateContents(contents)
     return err
+}
+
+func updateLocation(arrLoc []string,outdir string){
+    for _,locFile := range arrLoc{
+        input, err := ioutil.ReadFile(locFile)
+        if err != nil {
+            log.Fatalf("Unable to open %s to read: %v\n", locFile, err)
+        }
+        lines := strings.Split(string(input), "\n")
+        if (len(lines) == 2 && !strings.HasSuffix(lines[len(lines) -2] , outdir)) {
+            f, err := os.OpenFile(locFile,
+                os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+            if err != nil {
+                log.Fatalf("Unable to open %s for update: %v\n", locFile, err)
+            }
+            defer f.Close()
+            textAppend := "1,1,1," + outdir + "\n"
+            if _, err := f.WriteString(textAppend); err != nil {
+                log.Fatalf("Unable to update %s: %v\n", locFile, err)
+            }
+        }
+    }
+}
+
+func updateContents(arrContents []string){
+    for _,contentFile := range arrContents{
+        input, err := ioutil.ReadFile(contentFile)
+        if err != nil {
+            log.Fatalln("Unable to open %s to read: %v\n",contentFile,err)
+        }
+
+        lines := strings.Split(string(input), "\n")
+        var textline []string
+        for i := 0 ; i < len(lines) ; i++ {
+            line := lines[i]
+            token := strings.Split(line, ",")
+            if ( token[len(token)-1] == "0" ) {
+                token[len(token)-1] = "1"
+            }
+            textline = append(textline, strings.Join(token, ","))
+        }
+        output := strings.Join(textline, "\n")
+        err = ioutil.WriteFile(contentFile, []byte(output), 0644)
+        if err != nil {
+            log.Fatalln("Unable to update %s: %v\n",contentFile,err)
+        } 
+    }
 }
 
 func main() {
