@@ -3,7 +3,6 @@ package Connector
 import (
     "fmt"
     "strings"
-    "strconv"
     "os"
     "path/filepath"
     "path"
@@ -24,13 +23,13 @@ type is3 interface {
 }
 
 type S3connector struct {
-    access_key_id string
-    secret_access_key string
-    default_region string
-    bucket_url string
-    endpoint string
-    streams     int
-    blocksize   int64
+    Access_key_id string
+    Secret_access_key string
+    Default_region string
+    Bucket_url string
+    Endpoint string
+    Streams     int
+    Blocksize   int64
 }
 
 type jobS3 struct {
@@ -80,7 +79,7 @@ func (c *S3connector) uploadFileS3(absfilepath string, relfilepath string, uniqu
     }
 
     result,err := uploader.Upload(&s3manager.UploadInput{
-            Bucket: &c.bucket_url,
+            Bucket: &c.Bucket_url,
             Key:    aws.String(filepath.Join(uniqueid, relfilepath)),
             Body:   file,
         })
@@ -106,7 +105,7 @@ func (c *S3connector) downloadFile(outfilepath string, key string, conn *s3manag
 
     numBytes, err := conn.Download(filehandle,
         &s3.GetObjectInput{
-            Bucket: aws.String(c.bucket_url),
+            Bucket: aws.String(c.Bucket_url),
             Key:    aws.String(key),
         })
 
@@ -119,8 +118,8 @@ func (c *S3connector) downloadFile(outfilepath string, key string, conn *s3manag
 
 func (c *S3connector) getSession() (sess *session.Session) {
    sess, err := session.NewSession(&aws.Config{
-        Region: aws.String(c.default_region),
-        Credentials: credentials.NewStaticCredentials(c.access_key_id,c.secret_access_key,""),
+        Region: aws.String(c.Default_region),
+        Credentials: credentials.NewStaticCredentials(c.Access_key_id,c.Secret_access_key,""),
         CredentialsChainVerboseErrors: aws.Bool(true) })
     if (err != nil) {
         log.Fatalln("Session failed:", err)
@@ -133,8 +132,8 @@ func (c *S3connector) getUploader() (*s3manager.Uploader) {
   
     sessn := c.getSession() 
     uploader := s3manager.NewUploader(sessn,func(u *s3manager.Uploader) {
-         u.PartSize = c.blocksize * 1024 * 1024 // 64MB per part
-         u.Concurrency = c.streams
+         u.PartSize = c.Blocksize * 1024 * 1024 // 64MB per part
+         u.Concurrency = c.Streams
          })
     
     return uploader
@@ -144,41 +143,11 @@ func (c *S3connector) getDownloader() (*s3manager.Downloader, *session.Session) 
   
     sessn := c.getSession() 
     downloader := s3manager.NewDownloader(sessn,func(d *s3manager.Downloader) {
-         d.PartSize = c.blocksize * 1024 * 1024 // 64MB per part
-         d.Concurrency = c.streams
+         d.PartSize = c.Blocksize * 1024 * 1024 // 64MB per part
+         d.Concurrency = c.Streams
          })
     
     return downloader,sessn
-}
-
-func (c *S3connector) ParseConnectorArgs(args string) {
-    arguments := strings.Split(args, ";")
-    for _, arg := range arguments {
-        kv := strings.Split(arg, ":")
-        switch kv[0] {
-        case "ACCESS_KEY_ID":
-            c.access_key_id = kv[1]
-        case "SECRET_ACCESS_KEY":
-            c.secret_access_key = kv[1]
-        case "DEFAULT_REGION":
-            c.default_region = kv[1]
-        case "BUCKET_URL":
-            c.bucket_url = kv[1]
-        case "ENDPOINT":
-            c.endpoint = kv[1]
-        case "STREAMS":
-            i, err := strconv.Atoi(kv[1])
-            if (err == nil ) {
-                c.streams = i
-            }
-        case "BLOCKSIZE":
-            u64, err := strconv.ParseInt(kv[1], 10, 64)
-            if (err == nil ) {
-                c.blocksize = int64(u64)
-            }
-
-        }
-    }
 }
 
 func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
@@ -187,10 +156,11 @@ func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (er
 
     dirlist := strings.Split(backupinfo.Dir," ")
     for _, bkpdir := range dirlist {
+        log.Println("Uploading backup data to aws s3 cloud from backup dir", bkpdir)
         backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset, backupinfo.increment)
         _, err = os.Stat(backupdir)
         if err != nil {
-            return fmt.Errorf("Error Directory not present : %v", err)
+            return fmt.Errorf("Cannot access directory '%s': %v. Please check if DB name, hostname are correct.", backupdir, err)
         }
 
         work := make(chan *uploadJobS3, otherargs.paralleljobs)
@@ -226,7 +196,8 @@ func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (er
                     if r.err != nil {
                         // stopping right here so that we
                         // don't keep on uploading when one has failed
-                        log.Fatalf("%s: %v", r.jobS3, r.err)
+                        log.Println("Error while uploading file. Ensure aws s3 access-key-id, secret-access-key, bucket_url are correct. If error persists contact IBM support team.", *r.jobS3)
+                        log.Fatalf("Failed to access AWS bucket: %s with error: %v", c.Bucket_url, r.err)
                     }
                     filesuploaded++ // this is fine, since this is single threaded increment
                 }
@@ -248,6 +219,9 @@ func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (er
 
         close(work)
         <- done
+        if (err != nil) {
+            return(fmt.Errorf("Error reading directory: %s: %v. Please check if DB name, hostname are correct.", backupdir, err))
+        }
         log.Println("Upload using S3 connector successful for directory :", bkpdir)
         log.Println("Total files uploaded:", filesuploaded)
     }
@@ -255,11 +229,11 @@ func (c *S3connector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (er
 }
 
 func (cn *S3connector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (error){
-    log.Println("Downloading Using S3 Connector")
+    log.Println("Downloading backup data from aws cloud to backup dir", backupinfo.Dir)
     var err error
     outdir := backupinfo.Dir
-    arrayLoc:= []string{}
-    arrayContents:= []string{}
+    locations:= []string{}
+    contents:= []string{}
     work := make(chan *downloadJobS3, otherargs.paralleljobs)
     result := make(chan *downloadJobResultS3, otherargs.paralleljobs)
     done := make(chan bool)
@@ -303,7 +277,7 @@ func (cn *S3connector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
 
     down,sess := cn.getDownloader()
     client := s3.New(sess)
-    params := &s3.ListObjectsInput{Bucket: &cn.bucket_url, Prefix: &otherargs.uniqueid}
+    params := &s3.ListObjectsInput{Bucket: &cn.Bucket_url, Prefix: &otherargs.uniqueid}
     client.ListObjectsPages(params, func(page *s3.ListObjectsOutput, more bool) (bool) {
         for _, obj := range page.Contents {
             key := *obj.Key
@@ -317,19 +291,20 @@ func (cn *S3connector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
                     log.Fatalf("Error in fetching download relative path: %v",err)
                 }
 
-                file := filepath.Join(outdir, relfilepath)
-                err = os.MkdirAll(file, 0777)
+                dumpdir := filepath.Join(outdir, relfilepath)
+                err = os.MkdirAll(dumpdir, 0777)
                 if err != nil {
                     log.Fatalf("Error in creating backup directory structure: %v",err)
                 }
 
-                outfilepath := path.Join(file, filename)
-                if (strings.HasSuffix(outfilepath,"locations.txt")){
-                    arrayLoc = append(arrayLoc,outfilepath)
+                switch filename {
+                case "locations.txt":
+                    locations = append(locations, path.Join(dumpdir, filename))
+                case "contents.txt":
+                    contents = append(contents, path.Join(dumpdir, filename))
                 }
-                if (strings.HasSuffix(outfilepath,"contents.txt")){
-                    arrayContents = append(arrayContents,outfilepath)
-                }
+
+                outfilepath := path.Join(dumpdir, filename)
                 j := downloadJobS3{ conn:down, key:key, outfilepath:outfilepath }
                 work <- &j
             }
@@ -337,12 +312,10 @@ func (cn *S3connector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
         return true
     })
 
-        close(work)
-        <- done
-        log.Println("Total files downloaded using S3 Connector:", filesdownloaded)
-        if (*otherargs.cloudBackup) {
-            updateLocation(arrayLoc,outdir)
-            updateContents(arrayContents)
-        }
+    close(work)
+    <- done
+    log.Println("Total files downloaded using S3 Connector:", filesdownloaded)
+    updateLocation(locations,outdir)
+    updateContents(contents)
     return err
 }

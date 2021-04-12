@@ -1,10 +1,9 @@
 package main
 
 import (
-    "flag"
     "log"
-    "nzconnector/connector"
-    "nzconnector/factory"
+    "nzsyncbackup/connector"
+    "nzsyncbackup/factory"
 )
 
 const(
@@ -12,38 +11,33 @@ const(
     download
 )
 
-func parseConnectorArgs(e Connector.IConnector, args string) {
-    if e != nil {
-        e.ParseConnectorArgs(args)
-    }
-}
-
 
 func main() {
     var backupinfo Connector.BackupInfo
-    var connectorInfo Connector.ConnectorInfo
     var otherargs Connector.OtherArgs
+    var azconnect Connector.AZConnector
+    var s3connect Connector.S3connector
     var err error
 // parse input args
-    Connector.ParseArgs(&backupinfo, &connectorInfo, &otherargs)
-    flag.Parse()
-    Connector.SetUpLogFile(&backupinfo, &connectorInfo, &otherargs)
-    connector := Factory.GetConnector(connectorInfo.Connector)
-    parseConnectorArgs(connector, connectorInfo.ConnectorArgs)
+    Connector.ParseArgs(&backupinfo, &otherargs, &azconnect, &s3connect)
+    connector := Factory.GetConnector(otherargs.Connector, &azconnect, &s3connect)
 
+    if ( connector != nil ) {
     Connector.SetOperation(&otherargs)
-
+    log.Println("OPeration is ", otherargs.Operation)
     switch otherargs.Operation {
             case upload:
+                Connector.SetUpLogFile(&backupinfo, &otherargs)
                 // now do the upload
-                log.Println("Uploading backup data to cloud for conector : ",connectorInfo.Connector)
+                log.Println("Uploading backup data to cloud for conector : ",otherargs.Connector)
                 err = connector.Upload(&otherargs, &backupinfo)
                 if (err != nil) {
                     log.Fatalln(err)
                 }
                 log.Println("Upload successful")
             case download:
-                log.Println("Downloading backup data from cloud for connector : ", connectorInfo.Connector)
+                Connector.SetUpLogFile(&backupinfo, &otherargs)
+                log.Println("Downloading backup data from cloud for connector : ", otherargs.Connector)
                 err = connector.Download(&otherargs, &backupinfo)
                 if (err != nil) {
                     log.Fatalln(err)
@@ -52,5 +46,5 @@ func main() {
             default:
                 log.Fatalln("Invalid Operation, Supported  Upload/Download")
         }
-
+    }
 }

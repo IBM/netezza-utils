@@ -1,15 +1,15 @@
 package Factory
 
 import (
-    "nzconnector/connector"
+    "nzsyncbackup/connector"
 )
 
-func GetConnector(connectorType string) Connector.IConnector {
+func GetConnector(connectorType string, azconnect *Connector.AZConnector, s3connect *Connector.S3connector) Connector.IConnector {
     switch connectorType {
-    case "s3":
-        return &Connector.S3connector{}
-    case "az":
-        return &Connector.AZConnector{}
+    case "aws":
+        return s3connect
+    case "azure":
+        return azconnect
     default:
         return nil
     }

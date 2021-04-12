@@ -3,7 +3,6 @@ package Connector
 import (
     "fmt"
     "strings"
-    "strconv"
     "net/url"
     "time"
     "os"
@@ -25,11 +24,11 @@ type iaz interface {
 }
 
 type AZConnector struct {
-    azaccount   string
-    azkey       string
-    azcontainer string
-    streams     uint
-    blocksize   int64
+    Azaccount   string
+    Azkey       string
+    Azcontainer string
+    Streams     uint
+    Blocksize   int64
 }
 
 type job struct {
@@ -58,31 +57,6 @@ type downloadJobResult struct {
     err         error
 }
 
-func (c *AZConnector) ParseConnectorArgs(args string) {
-    arguments := strings.Split(args, ";")
-    for _, arg := range arguments {
-        kv := strings.Split(arg, ":")
-        switch kv[0] {
-        case "STORAGE_ACCOUNT":
-            c.azaccount = kv[1]
-        case "KEY":
-            c.azkey = kv[1]
-        case "CONTAINER":
-            c.azcontainer = kv[1]
-        case "STREAMS":
-            u32, err := strconv.ParseUint(kv[1], 10, 32)
-            if (err == nil ) {
-                c.streams = uint(u32)
-            }
-        case "BLOCKSIZE":
-            u64, err := strconv.ParseInt(kv[1], 10, 64)
-            if (err == nil ) {
-                c.blocksize = int64(u64)
-            }
-        }
-    }
-}
-
 func (j *uploadJob) uploadAZ(conn *AZConnector) error {
     relfilepath, err := filepath.Rel(j.job.bkpdir, j.absfilepath)
     if err != nil {
@@ -95,13 +69,13 @@ func (j *uploadJob) uploadAZ(conn *AZConnector) error {
 
 func (cn *AZConnector) getServiceURL() (azblob.ServiceURL, error) {
     var serviceURL azblob.ServiceURL
-    us := fmt.Sprintf("https://%s.blob.core.windows.net/", cn.azaccount)
+    us := fmt.Sprintf("https://%s.blob.core.windows.net/", cn.Azaccount)
     u, err := url.Parse(us)
     if err != nil {
         return serviceURL, fmt.Errorf("Unable to parse URL: %s : %v", us, err)
     }
 
-    credential, err := azblob.NewSharedKeyCredential(cn.azaccount, cn.azkey)
+    credential, err := azblob.NewSharedKeyCredential(cn.Azaccount, cn.Azkey)
     if err != nil {
         return serviceURL, fmt.Errorf("Unable to create shared credentials: %v", err)
     }
@@ -120,7 +94,7 @@ func (cn *AZConnector) getContainerURL() (azblob.ContainerURL, error) {
     var containerURL azblob.ContainerURL
     serviceURL, err := cn.getServiceURL()
     if err == nil {
-        containerURL = serviceURL.NewContainerURL(cn.azcontainer)
+        containerURL = serviceURL.NewContainerURL(cn.Azcontainer)
     }
     return containerURL, err
 }
@@ -157,8 +131,8 @@ func (cn *AZConnector) uploadFile(absfilepath string, relfilepath string, unique
 
     _, err = azblob.UploadFileToBlockBlob(context.Background(), file, blockBlobURL,
                         azblob.UploadToBlockBlobOptions{
-                        BlockSize:   int64(cn.blocksize * 1024 * 1024),
-                        Parallelism: uint16(cn.streams),
+                        BlockSize:   int64(cn.Blocksize * 1024 * 1024),
+                        Parallelism: uint16(cn.Streams),
             })
 
     return err
@@ -167,13 +141,13 @@ func (cn *AZConnector) uploadFile(absfilepath string, relfilepath string, unique
 
 func (cn *AZConnector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (error){
     var err error
-    log.Println("Uploading Using AZ Connector")
     dirlist := strings.Split(backupinfo.Dir," ")
     for _, bkpdir := range dirlist {
+        log.Println("Uploading backup data to azure cloud from backup dir", bkpdir)
         backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupset, backupinfo.increment)
         _, err = os.Stat(backupdir)
         if err != nil {
-            return fmt.Errorf("Error in Creating backupdir : %v", err)
+            return fmt.Errorf("Cannot access directory '%s': %v. Please check if DB name, hostname are correct.", backupdir, err)
         }
         work := make(chan *uploadJob, otherargs.paralleljobs)
         result := make(chan *jobResult, otherargs.paralleljobs)
@@ -208,7 +182,8 @@ func (cn *AZConnector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (e
                     if r.err != nil {
                         // stopping right here so that we
                         // don't keep on uploading when one has failed
-                        log.Fatalf("%s: %v", r.job, r.err)
+                        log.Println("Error while uploading file. Ensure azure storage account name, azure key and container name are correct. If error persists contact IBM support team.", *r.job)
+                        log.Fatalf("Azure storage account:%s accessing container:%s failed with error: %v", cn.Azaccount, cn.Azcontainer, r.err)
                     }
                     filesuploaded++ // this is fine, since this is single threaded increment
                 }
@@ -227,6 +202,9 @@ func (cn *AZConnector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (e
             })
         close(work)
         <- done
+        if (err != nil) {
+            return(fmt.Errorf("Error reading directory: %s: %v. Please check if DB name, hostname are correct.", backupdir, err))
+        }
         log.Println("Upload successful for Backup Dir  :", bkpdir)
         log.Println("Total files uploaded:", filesuploaded)
     }
@@ -236,7 +214,7 @@ func (cn *AZConnector) Upload( otherargs *OtherArgs, backupinfo *BackupInfo ) (e
 func (j *downloadJob) downloadAZ(conn *AZConnector) error {
 
     log.Println("Downloading file :", j.blobname)
-    return conn.downloadFile(j.outfilepath, j.blobname, conn.streams, conn.blocksize)
+    return conn.downloadFile(j.outfilepath, j.blobname, conn.Streams, conn.Blocksize)
 }
 
 func (cn *AZConnector) downloadFile(outfilepath string, blobname string, streams uint, blockSize int64) error {
@@ -269,10 +247,10 @@ func (cn *AZConnector) downloadFile(outfilepath string, blobname string, streams
 
 func (cn *AZConnector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (error){
     var err error
-    log.Println("Downloading Using AZ Connector")
+    log.Println("Downloading backup data from azure cloud to backup dir", backupinfo.Dir)
     outdir := backupinfo.Dir
-    arrayLoc:= []string{}
-    arrayContents:= []string{}
+    locations:= []string{}
+    contents:= []string{}
     work := make(chan *downloadJob, otherargs.paralleljobs)
     result := make(chan *downloadJobResult, otherargs.paralleljobs)
     done := make(chan bool)
@@ -328,7 +306,7 @@ func (cn *AZConnector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
         // Get a result segment starting with the blob indicated by the current Marker.
         listBlob, err := containerURL.ListBlobsFlatSegment(context.Background(), marker, azblob.ListBlobsSegmentOptions{})
         if err != nil {
-            return fmt.Errorf("Error in listing segment of blobs: %v",err)
+            return fmt.Errorf("Unable to list segment of blobs with storage account:%s and container:%s. Ensure azure storage account and container are correct.\n Error details: %v",cn.Azaccount, cn.Azcontainer, err)
         }
 
         // ListBlobs returns the start of the next segment; you MUST use this to get
@@ -351,14 +329,15 @@ func (cn *AZConnector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
                 if err != nil {
                     return fmt.Errorf("Error in creating backup directory structure: %v",err)
                 }
+                
+                switch filename {
+                case "locations.txt":
+                    locations = append(locations, path.Join(dumpdir, filename))
+                case "contents.txt":
+                    contents = append(contents, path.Join(dumpdir, filename))
+                }
 
                 outfilepath := path.Join(dumpdir, filename)
-                if (strings.HasSuffix(outfilepath,"locations.txt")){
-                    arrayLoc = append(arrayLoc,outfilepath)
-                }
-                if (strings.HasSuffix(outfilepath,"contents.txt")){
-                    arrayContents = append(arrayContents,outfilepath)
-                }
 
                 j := downloadJob{ conn:*cn, outfilepath:outfilepath, blobname: blobInfo.Name }
                 work <- &j
@@ -367,21 +346,15 @@ func (cn *AZConnector) Download(otherargs *OtherArgs, backupinfo *BackupInfo) (e
             }
         }
 
-        if blobfound > 0 {
-            log.Println("No matching blob found. Please check if DB name, hostname, uniqueid or containername is correct")
-            return fmt.Errorf("No matching blob found.")
-        }
         if blobfound == 0 {
-            blobfound++
+            return fmt.Errorf("No matching blob found. Please check if DB name, hostname, uniqueid or containername are correct. If error persists contact IBM support team. Azaccount:%s AzContainer:%s Blobpath:%s, Uniqueid:%s", cn.Azaccount, cn.Azcontainer, blobpath, otherargs.uniqueid)
         }
     }
     close(work)
     <- done
     log.Println("File Downloaded to dir :", outdir)
     log.Println("Total files downloaded:", filesdownloaded)
-    if (*otherargs.cloudBackup) {
-        updateLocation(arrayLoc,outdir)
-        updateContents(arrayContents)
-    }
+    updateLocation(locations,outdir)
+    updateContents(contents)
     return err
 }
