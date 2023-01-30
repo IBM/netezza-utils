@@ -399,15 +399,11 @@ func main() {
 	os.Exit(1)
         }
     }
-
-
     if flag.NFlag() == 0{
 	fmt.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
 	flag.PrintDefaults()
 	os.Exit(1)
     }
-
-
 
     // log file configuration setup
     logfilename := fmt.Sprintf("nz_azConnector_%d_%s.log", os.Getppid(), time.Now().Format("2006-01-02"))
@@ -416,8 +412,6 @@ func main() {
     if err != nil {
 	fmt.Errorf("Error in opening logfile: %v",err)
     } 
-
-
     w := io.MultiWriter(os.Stdout, filehandle)
     log.SetOutput(w)
     prefixStr := fmt.Sprintf("%s  ", time.Now().UTC().Format("2006-01-02 15:04:05 EST")) + fmt.Sprintf("%-7s",                              "[INFO]")
@@ -437,7 +431,6 @@ func main() {
  
     for _, bkpdir := range dirlist {
 	if (*othargs.upload) {
-
 	    // now do the upload
 	    log.Println("Uploading backup data to azure cloud from backup dir", bkpdir)
 	    backupdir := filepath.Join(bkpdir, "Netezza", backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
@@ -449,7 +442,6 @@ func main() {
 	    work := make(chan *uploadJob, othargs.paralleljobs)
 	    result := make(chan *jobResult, othargs.paralleljobs)
 	    done := make(chan bool)
-
 	    go func() {
 		for {
 		    select {
@@ -465,7 +457,6 @@ func main() {
 		    }
 	        }
             }()
-
 	    filesuploaded := 0
 	    go func() {
 		for {
@@ -486,7 +477,6 @@ func main() {
 			}
 		    }
 	     }()
-
 	     err = filepath.Walk(backupdir,
 		 func(absfilepath string, info os.FileInfo, err error) error {
 		     if info.IsDir() {
@@ -504,7 +494,6 @@ func main() {
 	     }
 	     log.Println("Upload successful. Total files uploaded:", filesuploaded)
 	}
-
 	 if (*othargs.download) {
 	     log.Println("Downloading backup data from azure cloud to restore dir", bkpdir)
 	     blobpath := filepath.Join(othargs.uniqueid, "Netezza",backupinfo.npshost, backupinfo.dbname, backupinfo.backupsetID)
