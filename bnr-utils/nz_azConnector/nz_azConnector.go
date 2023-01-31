@@ -377,9 +377,6 @@ func updateContents(arrContents []string){
 }
 
 
-
-
-
 func main() {
     var conn Conn
     var backupinfo BackupInfo
@@ -390,7 +387,7 @@ func main() {
     flag.Parse()
 
     requiredFlags := []string{ "db","dir","npshost","storage-account","key","container",
-    "upload","backupset","uniqueid","logfiledir","streams","paralleljobs","blocksize"}
+    "upload","download","backupset","uniqueid","logfiledir","streams","paralleljobs","blocksize"}
 
     for _, flagName := range requiredFlags {
 	if flag.Lookup(flagName).Value.String() == "" {
