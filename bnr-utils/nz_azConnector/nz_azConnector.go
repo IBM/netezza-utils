@@ -397,7 +397,6 @@ func main() {
         }
     }
 
-
     if flag.NFlag() == 0{
 	fmt.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
 	flag.PrintDefaults()
