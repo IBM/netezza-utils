@@ -391,7 +391,7 @@ func main() {
 
     for _, flagName := range requiredFlags {
 	if flag.Lookup(flagName).Value.String() == "" {
-	fmt.Printf("Error: %s Invalid flag\n", flagName)
+	fmt.Printf("Error : %s Invalid Flag\n", flagName)
 	flag.PrintDefaults()
 	os.Exit(1)
         }
