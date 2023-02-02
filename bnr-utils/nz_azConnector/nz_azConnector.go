@@ -405,7 +405,6 @@ func main() {
 	flag.PrintDefaults()
 	os.Exit(1)
     }
-
     // log file configuration setup
     logfilename := fmt.Sprintf("nz_azConnector_%d_%s.log", os.Getppid(), time.Now().Format("2006-01-02"))
     logfilepath := path.Join(othargs.logfiledir, logfilename)
