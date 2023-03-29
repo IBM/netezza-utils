@@ -386,8 +386,38 @@ func main() {
     flag.Parse()
 
     if flag.NFlag() == 0 {
-        fmt.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
+	fmt.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
         flag.PrintDefaults()
+        os.Exit(1)
+    }
+    
+    requiredFlags := map[string]string{
+    	"db":              "NZ_DATABASE",
+    	"dir":             "NZ_DIR",
+    	"npshost":         "NZ_HOST",
+    	"storage-account": "",
+    	"key":             "",
+        "container":       "",
+        "backupset":       "",
+        "uniqueid":        "",
+    }
+ 
+    ensureDefault := func(f string, env string) bool {
+    	val := flag.Lookup(f).Value
+        if env != "" {
+        	if len(val.String()) == 0 && len(env) != 0 {
+                	val.Set(os.Getenv(env))
+                }
+        }
+        return len(val.String()) != 0
+    }
+ 
+    for f, env := range requiredFlags {
+    	if !ensureDefault(f, env) {
+        	fmt.Println("Did you miss '-' in any flag. If so, Go treats remaining flags as the positional arguments")
+        	fmt.Fprintf(os.Stderr, "-%s is required\n", f)
+                os.Exit(1)
+        }
     }
 
     // log file configuration setup
