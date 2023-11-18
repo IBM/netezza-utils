@@ -411,7 +411,9 @@ func main() {
     log.Println("Backup/Restore directory :",dirlist)
     log.Println("DB name :", backupinfo.dbname)
     log.Println("Nps hostname :", backupinfo.npshost)
-    log.Println("BackupsetID :", backupinfo.backupsetID)
+    if backupinfo.backupsetID != "" {
+        log.Println("BackupsetID :", backupinfo.backupsetID)
+    }
     log.Println("UniqueID :", othargs.uniqueid)
     log.Println("Number of files to upload/download in parallel :", othargs.paralleljobs)
 
