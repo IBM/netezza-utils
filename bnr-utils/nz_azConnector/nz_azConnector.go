@@ -413,6 +413,8 @@ func main() {
     log.Println("Nps hostname :", backupinfo.npshost)
     if backupinfo.backupsetID != "" {
         log.Println("BackupsetID :", backupinfo.backupsetID)
+    } else {
+        log.Println("BackupsetID : ALL")
     }
     log.Println("UniqueID :", othargs.uniqueid)
     log.Println("Number of files to upload/download in parallel :", othargs.paralleljobs)
