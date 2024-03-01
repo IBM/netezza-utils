@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/Azure/azure-storage-blob-go/azblob"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
 type Conn struct {
@@ -385,12 +386,9 @@ func main() {
 	flag.Parse()
 
 	//Checking whether '-' is passed or not in flags
-	args := flag.Args()
-	for _, arg := range args {
-		if len(arg) > 0 && arg[0] != '-' {
-			fmt.Println("Error : '-' missing in ", arg)
-			os.Exit(1)
-		}
+	if len(flag.Args()) != 0 {
+		fmt.Println("Error : Incorrect syntax. Missing '-' before command line argument: ", flag.Args()[0])
+		os.Exit(1)
 	}
 
 	if flag.NFlag() == 0 {
