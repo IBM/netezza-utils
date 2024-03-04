@@ -385,17 +385,6 @@ func main() {
 	parseArgs(&conn, &backupinfo, &othargs)
 	flag.Parse()
 
-	//Checking whether '-' is passed or not in flags
-	if len(flag.Args()) != 0 {
-		fmt.Println("Error : Incorrect syntax. Missing '-' before command line argument: ", flag.Args()[0])
-		os.Exit(1)
-	}
-
-	if flag.NFlag() == 0 {
-		fmt.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
-		flag.PrintDefaults()
-	}
-
 	// log file configuration setup
 	logfilename := fmt.Sprintf("nz_azConnector_%d_%s.log", os.Getppid(), time.Now().Format("2006-01-02"))
 	logfilepath := path.Join(othargs.logfiledir, logfilename)
@@ -408,6 +397,17 @@ func main() {
 	prefixStr := fmt.Sprintf("%s  ", time.Now().UTC().Format("2006-01-02 15:04:05 EST")) + fmt.Sprintf("%-7s", "[INFO]")
 	log.SetFlags(0)
 	log.SetPrefix(prefixStr)
+
+	//Checking whether '-' is passed or not in flags
+	if len(flag.Args()) != 0 {
+		log.Println("Error : Incorrect syntax. Missing '-' before command line argument: ", flag.Args()[0])
+		os.Exit(1)
+	}
+
+	if flag.NFlag() == 0 {
+		log.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
+		flag.PrintDefaults()
+	}
 
 	dirlist := strings.Split(backupinfo.dirs, " ")
 	log.Println("Azure account name :", conn.azaccount)
