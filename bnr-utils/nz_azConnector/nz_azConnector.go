@@ -398,15 +398,15 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix(prefixStr)
 
-	//Checking whether '-' is passed or not in flags
-	if len(flag.Args()) != 0 {
-		log.Println("Error : Incorrect syntax. Missing '-' before command line argument: ", flag.Args()[0])
+	if flag.NFlag() == 0 {
+		log.Println("No arguments passed to nz_azConnector. Below is the list of valid args: ")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	if flag.NFlag() == 0 {
-		log.Println("No arguments passed to nz_azConnector. Below is the list of valid args:")
-		flag.PrintDefaults()
+	//Checking whether '-' is passed or not in flags
+	if len(flag.Args()) != 0 {
+		handleErrors(fmt.Errorf("Incorrect syntax. Missing '-' before command line argument: %s", flag.Args()[0]))
 	}
 
 	dirlist := strings.Split(backupinfo.dirs, " ")
