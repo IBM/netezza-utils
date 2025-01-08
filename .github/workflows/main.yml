@@ -5,9 +5,9 @@ jobs:
     name: azure blob utility
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
     - name: linux i386
-      uses: Ayush900/go-release-executables@v1.0.0
+      uses: ibm/go-release-executables@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
@@ -15,7 +15,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: linux amd64
-      uses: ibm/go-release-executables@v1.0.1
+      uses: ibm/go-release-executables@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
@@ -23,7 +23,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: windows amd64
-      uses: ibm/go-release-executables@v1.0.1
+      uses: ibm/go-release-executables@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
@@ -31,7 +31,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: windows 386
-      uses: ibm/go-release-executables@v1.0.1
+      uses: ibm/go-release-executables@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
@@ -39,7 +39,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: darwin amd64
-      uses: ibm/go-release-executables@v1.0.1
+      uses: ibm/go-release-executables@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
@@ -47,10 +47,24 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: darwin 386
-      uses: ibm/go-release-executables@v1.0.1
+      uses: ibm/go-release-executables@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
         GOOS: darwin
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
+
+  s3-connector:
+    name: S3 connector linux amd64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use the repo ibm/go-release-executables@v1.1.0
+        uses: ibm/go-release-executables@v1.1.0
+      - name: Create tarball and upload release
+        run: |
+          tar -czf bnr-utils/nz_s3connector.tgz -C bnr-utils/nz_s3Connector .
+          gh release upload ${{ github.event.release.tag_name }} bnr-utils/nz_s3connector.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
