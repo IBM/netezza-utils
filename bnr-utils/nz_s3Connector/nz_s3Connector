@@ -1,0 +1,351 @@
+#!/bin/sh
+
+# Copyright IBM Corp. 2019
+
+################################################################################
+
+#Global declarations
+DATETIME=$(date +'%H%M%S')
+hostname=`hostname`
+declare -a DUMP_DIRS            # DUMP_DIRS will be an array
+let DUMP_DIRS_COUNTER=0         # Counter for the array
+
+################################################################################
+
+log_func()
+{
+    if [ ${VERBOSE_MODE} ]; then
+        echo "[$(date)] : $1"
+    else
+        echo "[$(date)] : $1" >> "$LOGS"
+    fi
+}
+
+################################################################################
+
+awscli_version_check()
+{
+    log_func "Checking if aws cli is installed on host or not"
+
+    if aws --version 2>/dev/null; then
+        log_func "Aws cli installed on the host"
+    else
+        log_func "Aws cli not installed on the host. Installing aws cli now . . ."
+        unzip awscli-bundle-1.16.144.zip 2>/dev/null
+        if [ $? -eq 0 ]; then
+            log_func "Aws cli unzipped successfully. Now installing the aws cli"
+            ./awscli-bundle/install -b ~/bin/aws 2>/dev/null
+            if [ $? -eq 0 ]; then
+                log_func "Aws cli installed successfully."
+            else
+                log_func "Aws cli installation failed."
+                exit
+            fi
+        else
+            log_func "Unable to unzip awscli bundle. Aws cli installation failed."
+            exit
+        fi
+    fi
+
+}
+
+################################################################################
+
+#Process command-line options
+if [ $# -gt 0 ]; then
+    while [ $# -gt 0 ]; do
+        OPTION=$1
+        case $OPTION in
+
+            "-h"|"--h"|"-help"|"--help" )
+
+                shift
+                DISPLAY_HELP=TRUE
+                ;;
+
+            "-db"|"-DB"|"--database"|"-connectorArgs"|"-ConnectorArgs"|"connectorargs"|"Connectorargs"|"-npshost"|"npsHost"|"-backupset"|"backupSet"|"-awsoptions"|"-awsOptions"|"-log"|"-logdir"|"-logs"|"-logsdir" )
+
+                shift
+                opt_value=$1
+                shift
+                if [ $? -ne 0 ]; then
+                    echo "The required argument for option '$OPTION' is missing"
+                    echo "Try 'nz_s3connector -h' for more information."
+                    exit 255
+                fi
+
+                if [ "$opt_value" = "" ]; then
+                    echo "The required argument for option '$OPTION' is empty"
+                    echo "Try 'nz_s3connector -h' for more information."
+                    exit 255
+                fi
+
+                case $OPTION in
+                    "-db"|"-DB"|"--database" )                                               NZ_DATABASE=$opt_value  ;;
+                    "-connectorArgs"|"-ConnectorArgs"|"connectorargs"|"Connectorargs" )      NZ_CONNARGS=$opt_value  ;;
+                    "-npshost"|"npsHost"     )                                               NZ_NPSHOST=$opt_value   ;;
+                    "-backupset"|"backupSet" )                                               NZ_BACKUPSET=$opt_value ;;
+                    "-awsoptions"|"-awsOptions" )                                            AWS_OPTIONS=$opt_value ;;
+                    "-log"|"-logdir"|"-logs"|"-logsdir" )                                    LOGDIR=$opt_value ;;
+                esac
+                ;;
+
+            "-upload"|"-Upload" )
+
+                shift
+                UPLOAD_MODE=TRUE
+                ;;
+
+            "-download"|"-Download" )
+
+                shift
+                DOWNLOAD_MODE=TRUE
+                ;;
+
+            "-verbose" | "-v" )
+                shift
+                VERBOSE_MODE=TRUE
+                ;;
+
+            "-dir" | "-directory" ) shift ;
+
+                flag=TRUE
+                while [ $flag ]; do
+
+                    if [[ "$1" = "-"* ]]; then
+                        unset flag
+                    elif [ "$1" = ""   ]; then
+                        unset flag
+                    else
+                        let DUMP_DIRS_COUNTER++
+                        DUMP_DIRS[${DUMP_DIRS_COUNTER}]=$1
+                        shift
+                    fi
+
+                done
+                ;;
+
+            # The directory where all of the files (or named pipes) will reside
+            # It can now be specified on a per-thread basis
+            # If you specify multiple dump dirs, then the number of dump dirs must match
+            # the number of threads
+
+            *)
+                echo "An unknown/invalid option was specified '$1'"
+                echo "Try 'nz_s3connector -h' for more information."
+                exit 1
+                ;;
+        esac
+
+    done
+
+else
+    echo "Error: a directory name (-dir <dirname>) must be specified."
+    echo "Usage: nzbackup [-h] [<options>]"
+    echo "Try using 'nz_s3connector -h' for more information."
+    exit 1
+fi
+
+################################################################################
+
+if [ $DISPLAY_HELP ]; then cat <<end-of-help; exit 0 ; fi
+
+Usage:   nz_s3connector [-h] -db <dbname> -dir <location1> <location2> -connectorArgs <ACCESS_KEY_ID=:BUCKET_URL=:DEFAULT_         REGION=:SECRET_ACCESS_KEY=:MULTIPART_SIZE_MB=:ENDPOINT=:UNIQUE_ID=> -npshost <hostname> -backupset <backupsetid>
+         -upload|download -verbose -awsoptions <aws options> -logdir <log directory>
+
+Purpose: To upload or download one or more data backup file to and from aws s3 or IBM cloud.
+
+         An nz_s3connector must be run locally (on the NPS host being backed up).
+
+Options:
+         -h or --help
+
+            display this help
+
+         -verbose
+
+            Controls the flow of commentary. The default behaviour is that the output would be logged
+            in logfile under /tmp directory. If you specify -verbose, then the relevant output would be
+            shown and nothing would be logged in file.
+
+         -db DATABASE
+
+            the name of the database to back up
+
+         -dir <dirname> [...]
+
+            the full path to the directory in which the data files will be written to (or read from).
+            This directory must already exist and permit write access to it.
+
+         -connectorArgs
+
+            should be of the form "name=value[:name=value[...]]"(see usage above). Below are the arguments:
+
+                       ACCESS_KEY_ID            Access Key Id to access AWS s3/IBM cloud
+                       BUCKET_URL               bucket url to access AWS s3/IBM cloud
+                       DEFAULT_REGION           default region of your bucket in AWS s3/IBM cloud
+                       SECRET_ACCESS_KEY        Secret Access Key to access access AWS s3/IBM cloud
+                       MULTIPART_SIZE_MB        chunk size that the CLI uses for multipart transfers of individual files.
+                       ENDPOINT                 the URL of the entry point for an AWS s3/IBM cloud.
+                                                Mandatory for IBM cloud service.
+                       UNIQUE_ID                unique ID associated with the file transfer
+
+         -npshost <name>
+
+            host name  [NZ_HOST]
+
+         -backupset ID
+
+            specify a backupset ID, as displayed in the backup history report.
+            If omitted then all the files from the directory would be uploaded/downloaded
+
+         -upload|download
+
+            specify whether the files needs to be uploaded/downloaded to/from aws s3 or IBM cloud
+
+         -awsoptions
+
+            specify aws option like --debug --no-verify-ssl etc. Should be of the form -awsoptions "option1 option2".
+            For e.g.: -awsoptions "--debug --no-verify-ssl".
+            Visit https://docs.aws.amazon.com/cli/latest/reference/ for more information
+
+         -logdir
+
+            specify the log directory path
+
+end-of-help
+
+################################################################################
+
+main()
+{
+    if [ "$LOGDIR" ]; then
+        if [ ! -d "$LOGDIR" ];  then
+            echo "ERROR:  The specified '-logdir $LOGDIR' does not exist." >&2
+            exit 1
+        fi
+        LOGS="$LOGDIR/nz_s3connector_$DATETIME.log"
+    fi
+
+    if [ "$UPLOAD_MODE" != "TRUE" -a "$DOWNLOAD_MODE" != "TRUE" ]; then
+        log_func "Mandatory argument upload or download is required"
+        log_func "Try 'nz_s3connector -h' for more information."
+        exit
+    fi
+
+    if [ "$DUMP_DIRS_COUNTER" = "0" ]; then
+        log_func "Error: a directory name (-dir <dirname>) must be specified."
+        log_func "Try 'nz_s3connector -h' for more information."
+        exit
+    fi
+
+    # check if awscli is installed. If not installed, install it using the zip file
+    awscli_version_check
+
+    if [ $NZ_DATABASE ]; then
+        NZ_DATABASE=`echo $NZ_DATABASE`
+    fi
+
+    IFS=':' read -ra CONNARGS <<< "$NZ_CONNARGS"    #Convert string to array
+
+    log_func "Reading connection arguments"
+
+    for CONNARG in "${CONNARGS[@]}"; do
+        IFS='=' read -ra ARGS <<< "$CONNARG"
+        for ((loop=0;loop<=1;loop++)) ; do
+            OPTION=${ARGS[0]}
+            case $OPTION in
+                "ACCESS_KEY_ID" )
+                    ACCESS_KEY_ID=${ARGS[1]}
+                    ;;
+
+                "BUCKET_URL" )
+                    BUCKET_URL=${ARGS[1]}
+                    ;;
+
+                "DEFAULT_REGION" )
+                    DEFAULT_REGION=${ARGS[1]}
+                    ;;
+
+                "SECRET_ACCESS_KEY" )
+                    SECRET_ACCESS_KEY=${ARGS[1]}
+                    ;;
+
+                "MULTIPART_SIZE_MB" )
+                    MULTIPART_SIZE_MB=${ARGS[1]}
+                    ;;
+
+                "ENDPOINT" )
+                    ENDPOINT=${ARGS[1]}
+                    ;;
+
+                "UNIQUE_ID" )
+                    UNIQUE_ID=${ARGS[1]}
+                    ;;
+
+                *)
+                    log_func "An unknown/invalid option was specified '$1' in connectorArgs"
+                    log_func "Try 'nz_s3connector -h' for more information."
+                    exit 1
+                    ;;
+            esac
+        done
+    done
+
+    if [ -z $ACCESS_KEY_ID ] || [ -z $UNIQUE_ID ] || [ -z $DEFAULT_REGION ] || [ -z $SECRET_ACCESS_KEY ] || [ -z $BUCKET_URL ]; then
+        log_func "One of the below mandatory argument is missing from connectorArgs"
+        log_func "ACCESS_KEY_ID UNIQUE_ID DEFAULT_REGION SECRET_ACCESS_KEY BUCKET_URL"
+        log_func "Try 'nz_s3connector -h' for more information."
+        exit
+    fi
+
+    log_func "Setting aws environment variables based on connection arguments"
+
+    export AWS_ACCESS_KEY_ID=$ACCESS_KEY_ID
+    export AWS_DEFAULT_REGION=$DEFAULT_REGION
+    export AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY
+
+    if [ $MULTIPART_SIZE_MB ]; then
+        aws configure set default.s3.multipart_chunksize $MULTIPART_SIZE_MB"MB"
+    fi
+
+    log_func "Executing aws command to connect to cloud"
+
+    for ((loop=1;loop<=$DUMP_DIRS_COUNTER;loop++)); do
+        DUMP_DIR=${DUMP_DIRS[$loop]}
+
+        if [ $ENDPOINT ]; then
+
+            if [ $UPLOAD_MODE ]; then
+                cmd="aws $AWS_OPTIONS --endpoint-url='https://$ENDPOINT' s3 cp '$DUMP_DIR/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' 's3://$BUCKET_URL/$UNIQUE_ID/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' --recursive"
+            fi
+
+            if [ $DOWNLOAD_MODE ]; then
+                cmd="aws $AWS_OPTIONS --endpoint-url='https://$ENDPOINT' s3 cp 's3://$BUCKET_URL/$UNIQUE_ID/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' '$DUMP_DIR/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' --recursive"
+            fi
+
+        else
+
+            if [ $UPLOAD_MODE ]; then
+                cmd="aws $AWS_OPTIONS s3 cp '$DUMP_DIR/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' 's3://$BUCKET_URL/$UNIQUE_ID/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' --recursive"
+            fi
+
+            if [ $DOWNLOAD_MODE ]; then
+                cmd="aws $AWS_OPTIONS s3 cp 's3://$BUCKET_URL/$UNIQUE_ID/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' '$DUMP_DIR/Netezza/$NZ_NPSHOST/$NZ_DATABASE/$NZ_BACKUPSET' --recursive"
+            fi
+
+        fi
+
+        log_func "Executing: $cmd"
+
+        if [ $VERBOSE_MODE ]; then
+            eval $cmd
+        else
+            eval $cmd &>> $LOGS
+        fi
+
+    done
+
+}
+
+main
