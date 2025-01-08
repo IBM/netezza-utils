@@ -15,7 +15,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: linux amd64
-      uses: ibm/go-release-executables@v1.0.1
+      uses: Ayush900/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
@@ -23,7 +23,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: windows amd64
-      uses: ibm/go-release-executables@v1.0.1
+      uses: Ayush900/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
@@ -31,7 +31,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: windows 386
-      uses: ibm/go-release-executables@v1.0.1
+      uses: Ayush900/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
@@ -39,7 +39,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: darwin amd64
-      uses: ibm/go-release-executables@v1.0.1
+      uses: Ayush900/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: amd64
@@ -47,7 +47,7 @@ jobs:
         SUBDIR: "bnr-utils/nz_azConnector"
         EXECUTABLE_NAME: "nz_azConnector"
     - name: darwin 386
-      uses: ibm/go-release-executables@v1.0.1
+      uses: Ayush900/go-release-executables@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GOARCH: "386"
