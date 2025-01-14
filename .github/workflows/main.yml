@@ -1,4 +1,8 @@
-on: release
+on:
+  release:
+    types:
+      - published
+
 name: Build Release
 jobs:
   azure-connector:
