@@ -7,8 +7,7 @@ GITHUB_WORKSPACE=$2
 GOOS=$3
 EXECUTABLE_NAME=$4
 SUBDIR=$5
-GOOS=$6
-GOARCH=$7
+GOARCH=$6
 
 export GO_HOME=/usr/local/go
 export GOPATH=/go
