@@ -38,7 +38,7 @@ fi
 if [ -x "./build.sh" ]; then
   COMPILED_FILES=`./build.sh "${OUTFILE}" "${BUILD_OPTS}"`
 else
-  GOOS=GOOS GOARCH=GOARCH go build -o ${OUTFILE} "${BUILD_OPTS}"
+  go build -o ${OUTFILE} "${BUILD_OPTS}"
   COMPILED_FILES="${OUTFILE}"
 fi
 
