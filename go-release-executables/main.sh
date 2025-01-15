@@ -40,4 +40,4 @@ curl \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
   "${RELEASE_UPLOAD_URL}?name=${NAME}.${TMP_ARCHIVE/tmp./}"
 
-rm $PROJECT_ROOT
+sudo rm $PROJECT_ROOT
