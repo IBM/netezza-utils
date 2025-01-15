@@ -33,7 +33,7 @@ jobs:
             SUBDIR: "bnr-utils/nz_azConnector"
             EXECUTABLE_NAME: "nz_azConnector"
 
-  as3-connector:
+  s3-connector:
     name: S3 connector linux amd64
     runs-on: ubuntu-latest
     steps:
