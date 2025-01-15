@@ -22,9 +22,6 @@ sudo rmdir $PROJECT_ROOT
 sudo ln -s $GITHUB_WORKSPACE $PROJECT_ROOT
 cd $PROJECT_ROOT/${SUBDIR}
 go get -v ./...
-go get golang.org/x/net/http/httpproxy
-go get golang.org/x/sys/windows
-go get golang.org/x/sys/windows/registry
 
 EXT=''
 

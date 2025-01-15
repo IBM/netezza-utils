@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v2
+        - name: Install Go dependencies
+          run: |
+            go get golang.org/x/net/http/httpproxy
+            go get golang.org/x/sys/windows
+            go get golang.org/x/sys/windows/registry
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         - name: linux i386
           run: |
             cd go-release-executables
