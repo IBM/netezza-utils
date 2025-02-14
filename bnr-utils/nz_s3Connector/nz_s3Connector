@@ -31,7 +31,7 @@ awscli_version_check()
         log_func "Aws cli installed on the host"
     else
         log_func "Aws cli not installed on the host. Installing aws cli now . . ."
-        unzip awscli-bundle-1.16.144.zip 2>/dev/null
+        unzip awscli-bundle-*.zip 2>/dev/null
         if [ $? -eq 0 ]; then
             log_func "Aws cli unzipped successfully. Now installing the aws cli"
             ./awscli-bundle/install -b ~/bin/aws 2>/dev/null
