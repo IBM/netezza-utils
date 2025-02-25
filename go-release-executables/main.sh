@@ -4,7 +4,7 @@ set -x
 
 #!/bin/bash -eux
 
-GO_LINUX_PACKAGE_URL="https://dl.google.com/go/go1.14.linux-amd64.tar.gz"
+GO_LINUX_PACKAGE_URL="https://go.dev/dl/go1.24.0.linux-amd64.tar.gz"
 wget --no-check-certificate --progress=dot:mega ${GO_LINUX_PACKAGE_URL} -O go-linux.tar.gz
 tar -zxf go-linux.tar.gz
 sudo mv go /usr/local/
