@@ -44,3 +44,31 @@ jobs:
           gh release upload ${{ github.event.release.tag_name }} bnr-utils/nz_s3connector.tgz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  s3-connector-go:
+    name: s3 connector using go
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v2
+        - name: linux i386
+          run: |
+            cd go-release-executables
+            chmod +x ./*
+            bash main.sh
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GOARCH: "386"
+            GOOS: linux
+            SUBDIR: "bnr-utils/nz_s3_connector_go"
+            EXECUTABLE_NAME: "nz_s3_connector"
+        - name: linux amd64
+          run: |
+            cd go-release-executables
+            chmod +x ./*
+            bash main.sh
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GOARCH: amd64
+            GOOS: linux
+            SUBDIR: "bnr-utils/nz_s3_connector_go"
+            EXECUTABLE_NAME: "nz_s3_connector"
