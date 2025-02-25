@@ -15,7 +15,7 @@ Available Parameters:
 -access-key
     Access Key Id to access AWS s3/IBM cloud
 -backupset
-    Name of the backupset to be uploaded/downloaded
+    Name of the backupset to be uploaded/downloaded. If omitted then all the files from the directory would be uploaded/downloaded
 -blocksize
     Block size in MB to upload/download file (default 100)
 -bucket-url
