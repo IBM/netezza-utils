@@ -13,14 +13,14 @@ export GO_HOME=/usr/local/go
 export GOPATH=/go
 export PATH=${GOPATH}/bin:${GO_HOME}/bin/:$PATH
 
-PROJECT_ROOT="/go/src/github.com/${GITHUB_REPOSITORY}"
+# PROJECT_ROOT="/go/src/github.com/${GITHUB_REPOSITORY}"
 PROJECT_NAME=$(basename $GITHUB_REPOSITORY)
 
-sudo mkdir -p $PROJECT_ROOT
-sudo rmdir $PROJECT_ROOT
+# sudo mkdir -p $PROJECT_ROOT
+# sudo rmdir $PROJECT_ROOT
 # without above, following symlink creation fails (?)
-sudo ln -s $GITHUB_WORKSPACE $PROJECT_ROOT
-cd $PROJECT_ROOT/${SUBDIR}
+# sudo ln -s $GITHUB_WORKSPACE $PROJECT_ROOT
+cd $GITHUB_WORKSPACE/${SUBDIR} || exit 1
 go mod tidy
 
 EXT=''
