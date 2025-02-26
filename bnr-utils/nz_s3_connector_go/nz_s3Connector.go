@@ -108,14 +108,12 @@ func main() {
 
 	cfg := conn.createS3Config()
 	if *otherArgs.download {
-		now := time.Now()
 		conn.Download(cfg, backupinfo, otherArgs)
-		log.Printf("Downloading complete. Time taken: %v", time.Since(now))
+		log.Println("Downloading complete.")
 	}
 	if *otherArgs.upload {
-		now := time.Now()
 		conn.Upload(cfg, backupinfo, otherArgs)
-		log.Printf("Uploading complete. Time taken: %v", time.Since(now))
+		log.Println("Uploading complete.")
 	}
 }
 
