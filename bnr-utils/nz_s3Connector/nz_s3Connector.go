@@ -224,12 +224,8 @@ func (s3Conn *S3Conn) Download(cfg aws.Config, bkp BackupInfo, otherArgs OtherAr
 
 			for _, obj := range page.Contents {
 				key := *obj.Key
-				log.Printf("KEY: %s", key)
 
 				if strings.HasPrefix(key, bkpath) {
-					if bkp.backupsetID != "" {
-						
-					}
 					splitdir, filename := filepath.Split(key)
 					relfilepath, err := filepath.Rel(otherArgs.uniqueId, splitdir)
 					if err != nil {
