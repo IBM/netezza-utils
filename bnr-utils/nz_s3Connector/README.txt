@@ -55,7 +55,7 @@ Options:
 
          -streams STREAMS
 
-            Number of blocks to upload/download in parallel default 16 (default 16)
+            Number of blocks to upload/download in parallel (default 16)
 
          -blocksize BLOCK_SIZE
 
@@ -67,16 +67,16 @@ Options:
 
          -npshost <name>
 
-            host name  [NZ_HOST]
+            Host name  [NZ_HOST]
 
          -backupset ID
 
-            specify a backupset ID, as displayed in the backup history report.
+            Specify a backupset ID, as displayed in the backup history report.
             If omitted then all the files from the directory would be uploaded/downloaded
 
          -upload|download
 
-            specify whether the files needs to be uploaded/downloaded to/from aws s3 or IBM cloud		
+            Specify whether the files needs to be uploaded/downloaded to/from aws s3 or IBM cloud		
 			
 Examples: 
 
@@ -86,11 +86,9 @@ Examples:
                         used as database.  
    o directory       : path under which database backup data files are present. In example below,
                      /nzscratch/db2 is used as directory.
-   o connector arguments   : connector arguement such as ACCESS_KEY_ID, BUCKET_URL, DEFAULT_REGION,  
-                              SECRET_ACCESS_KEY, UNIQUE_ID. ENDPOINT is mandatory
-                              to connect to IBM cloud.
-   o npshost         : nps hostname where backup data files are present. In example below, 
-                     santro1.fyre.ibm.com is used as npshost.
+   o connector arguments   : connector arguement such as -access-key, -secret-key, -region, -bucket-url. 
+                             -endpoint is mandatory to connect to IBM cloud.
+   o npshost         : nps hostname where backup data files are present.
    o upload          : to specify that you need to upload the files to cloud. 
    o backupset       : a backupset ID, as displayed in the backup history report. If omitted then all the 
 	                     files from the directory would be uploaded. In example below,20191127100647 is 
@@ -104,16 +102,16 @@ Outputs:
 2025-02-26 07:27:01  [INFO] Aws region: us-east-1
 2025-02-26 07:27:01  [INFO] Backup/Restore directory: /tmp/bkp1
 2025-02-26 07:27:01  [INFO] DB name : DB1
-2025-02-26 07:27:01  [INFO] Nps hostname : santro1.fyre.ibm.com
+2025-02-26 07:27:01  [INFO] Nps hostname : ****
 2025-02-26 07:27:01  [INFO] BackupsetID : 20241023114051
 2025-02-26 07:27:01  [INFO] Number of files to upload/download in parallel : 20
-2025-02-26 07:27:01  [INFO] Uploading data to s3 bucket **** with unique-id abhi1 from dir /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051
-2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/data/data.marker uploaded successfully
-2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/loc1/locations.txt uploaded successfully
-2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/stream.0.1 uploaded successfully
-2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/contents.txt uploaded successfully
-2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/data/200221.full.1.1 uploaded successfully
-2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/schema.xml uploaded successfully
+2025-02-26 07:27:01  [INFO] Uploading data to s3 bucket **** with unique-id abhi1 from dir /tmp/bkp1/Netezza/****/DB1/20241023114051
+2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/****/DB1/20241023114051/1/FULL/data/data.marker uploaded successfully
+2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/****/DB1/20241023114051/1/FULL/md/loc1/locations.txt uploaded successfully
+2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/****/DB1/20241023114051/1/FULL/md/stream.0.1 uploaded successfully
+2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/****/DB1/20241023114051/1/FULL/md/contents.txt uploaded successfully
+2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/****/DB1/20241023114051/1/FULL/data/200221.full.1.1 uploaded successfully
+2025-02-26 07:27:01  [INFO] File /tmp/bkp1/Netezza/****/DB1/20241023114051/1/FULL/md/schema.xml uploaded successfully
 2025-02-26 07:27:01  [INFO] Total files uploaded: 6
 2025-02-26 07:27:01  [INFO] Uploading complete.
 
@@ -124,11 +122,9 @@ Outputs:
                         used as database.  
    o directory       : path under which database backup data files are present. In example below,
                      /tmp/bkp1 is used as directory.
-   o connector arguments   : connector arguement such as ACCESS_KEY_ID, BUCKET_URL, DEFAULT_REGION,  
-                              SECRET_ACCESS_KEY, UNIQUE_ID. ENDPOINT is mandatory
-                              to connect to IBM cloud.
-   o npshost         : nps hostname where backup data files are present. In example below, 
-                     santro1.fyre.ibm.com is used as npshost.
+   o connector arguments   : connector arguement such as -access-key, -secret-key, -region, -bucket-url. 
+                             -endpoint is mandatory to connect to IBM cloud.
+   o npshost         : nps hostname where backup data files are present.
    o download          : to specify that you need to download the files to cloud. 
    o backupset       : a backupset ID, as displayed in the backup history report. If omitted then all the 
 	                     files from the directory would be uploaded. In example below,20191127100647 is 
@@ -142,17 +138,17 @@ Outputs:
 2025-02-26 07:27:21  [INFO] Aws region: us-east-1
 2025-02-26 07:27:21  [INFO] Backup/Restore directory: /tmp/bkp1
 2025-02-26 07:27:21  [INFO] DB name : DB1
-2025-02-26 07:27:21  [INFO] Nps hostname : santro1.fyre.ibm.com
+2025-02-26 07:27:21  [INFO] Nps hostname : ****
 2025-02-26 07:27:21  [INFO] BackupsetID : 20241023114051
 2025-02-26 07:27:21  [INFO] Number of files to upload/download in parallel : 20
-2025-02-26 07:27:21  [INFO] Backup dir path: power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051
+2025-02-26 07:27:21  [INFO] Backup dir path: power/Netezza/****/DB1/20241023114051
 2025-02-26 07:27:21  [INFO] Downloading data to dir /tmp/bkp1
-2025-02-26 07:27:21  [INFO] File power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/stream.0.1 downloaded successfully
-2025-02-26 07:27:21  [INFO] File power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/loc1/locations.txt downloaded successfully
-2025-02-26 07:27:21  [INFO] File power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/data/data.marker downloaded successfully
-2025-02-26 07:27:21  [INFO] File power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/contents.txt downloaded successfully
-2025-02-26 07:27:21  [INFO] File power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/data/200221.full.1.1 downloaded successfully
-2025-02-26 07:27:21  [INFO] File power/Netezza/santro1.fyre.ibm.com/DB1/20241023114051/1/FULL/md/schema.xml downloaded successfully
+2025-02-26 07:27:21  [INFO] File power/Netezza/****/DB1/20241023114051/1/FULL/md/stream.0.1 downloaded successfully
+2025-02-26 07:27:21  [INFO] File power/Netezza/****/DB1/20241023114051/1/FULL/md/loc1/locations.txt downloaded successfully
+2025-02-26 07:27:21  [INFO] File power/Netezza/****/DB1/20241023114051/1/FULL/data/data.marker downloaded successfully
+2025-02-26 07:27:21  [INFO] File power/Netezza/****/DB1/20241023114051/1/FULL/md/contents.txt downloaded successfully
+2025-02-26 07:27:21  [INFO] File power/Netezza/****/DB1/20241023114051/1/FULL/data/200221.full.1.1 downloaded successfully
+2025-02-26 07:27:21  [INFO] File power/Netezza/****/DB1/20241023114051/1/FULL/md/schema.xml downloaded successfully
 2025-02-26 07:27:21  [INFO] Total files downloaded: 6
 2025-02-26 07:27:21  [INFO] Downloading complete.
 
