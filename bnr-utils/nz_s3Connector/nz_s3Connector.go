@@ -105,7 +105,7 @@ func main() {
 		log.Println("BackupsetID : ALL")
 	}
 	log.Println("Number of files to upload/download in parallel :", otherArgs.parallelJobs)
-
+	checkRequiredArguments(backupinfo, otherArgs)
 	cfg := conn.createS3Config()
 	if *otherArgs.download {
 		conn.Download(cfg, backupinfo, otherArgs)
@@ -114,6 +114,32 @@ func main() {
 	if *otherArgs.upload {
 		conn.Upload(cfg, backupinfo, otherArgs)
 		log.Println("Uploading complete.")
+	}
+}
+
+func checkRequiredArguments(bkp BackupInfo, arg OtherArgs) {
+	if bkp.backupsetID != "" {
+		if bkp.dirs == "" || bkp.npshost == "" || bkp.dbname == "" {
+			log.Fatalf("Missing required field: db, npshost or dir is not found")
+		}
+	} else if bkp.dbname != "" {
+		if bkp.dirs == "" || bkp.npshost == "" {
+			log.Fatalf("Missing required field: npshost or dir is not found")
+		}
+	} else if bkp.npshost != "" {
+		if bkp.dirs == "" {
+			log.Fatalf("Missing required field: dir is not found")
+		}
+	} else {
+		if bkp.dirs == "" {
+			log.Fatalf("Missing required field: dir is not found")
+		}
+	}
+
+	if *arg.upload || *arg.download {
+		if arg.uniqueId == "" {
+			log.Fatalf("Missing required field: uniqueid is not found. It is required for upload/download operation")
+		}
 	}
 }
 
