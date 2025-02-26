@@ -7,7 +7,7 @@ name: Build Release
 jobs:
   azure-connector:
     name: azure blob utility
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
         - uses: actions/checkout@v2
         - name: linux i386
@@ -35,7 +35,7 @@ jobs:
 
   s3-connector:
     name: S3 connector linux amd64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Create tarball and upload release
@@ -47,7 +47,7 @@ jobs:
 
   s3-connector-go:
     name: s3 connector using go
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
         - uses: actions/checkout@v2
         - name: linux i386
