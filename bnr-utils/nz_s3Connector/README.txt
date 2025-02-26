@@ -1,12 +1,12 @@
-nz_s3connector
+nz_s3Connector
 
-Usage:   ./nz_s3connector [-h] -db <dbname> -dir <location1> <location2> -access-key <access-key> -secret-key <secret-key> -region <default_region>
+Usage:   ./nz_s3Connector [-h] -db <dbname> -dir <location1> <location2> -access-key <access-key> -secret-key <secret-key> -region <default_region>
          -unique-id <unique_id> -bucket-url <bucket-name> -npshost <hostname> -backupset <backupsetid> -streams <streams> -blocksize <blocksize> 
          -endpoint <endpoint> -paralleljobs <paralleljobs> -upload|download -logfiledir <location>
 
 Purpose: To upload or download one or more data backup file to and from aws s3 or IBM cloud.
 
-         An nz_s3connector must be run locally (on the NPS host being backed up).
+         An nz_s3Connector must be run locally (on the NPS host being backed up).
 
 Options:
          -h or --help
@@ -94,7 +94,7 @@ Examples:
 	                     files from the directory would be uploaded. In example below,20191127100647 is 
 	                     used as backupset.
 
-$ ./nz_s3_connector -access-key **** -secret-key **** -region us-east-1 -dir /tmp/bkp1 -db DB1 -npshost **** 
+$ ./nz_s3Connector -access-key **** -secret-key **** -region us-east-1 -dir /tmp/bkp1 -db DB1 -npshost **** 
 -unique-id abhi1 -bucket-url **** -upload -paralleljobs 20 -endpoint **** -backupset 20241023114051
 
 Outputs: 			
@@ -130,7 +130,7 @@ Outputs:
 	                     files from the directory would be uploaded. In example below,20191127100647 is 
 	                     used as backupset.
 
-$ $ ./nz_s3_connector -access-key **** -secret-key **** -region us-east-1 -dir /tmp/bkp1 -db DB1 -npshost **** 
+$ $ ./nz_s3Connector -access-key **** -secret-key **** -region us-east-1 -dir /tmp/bkp1 -db DB1 -npshost **** 
 -unique-id abhi1 -bucket-url **** -upload -paralleljobs 20 -endpoint **** -backupset 20241023114051
 
 Outputs: 			
